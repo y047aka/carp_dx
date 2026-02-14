@@ -1,7 +1,8 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, button, div, text)
+import Html exposing (Html, button, div, h2, text)
+import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 
 
@@ -43,7 +44,14 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ button [ onClick Decrement ] [ text "-" ]
-        , div [] [ text (String.fromInt model.count) ]
-        , button [ onClick Increment ] [ text "+" ]
+        [ div [ class "card" ]
+            [ div [ class "card-body" ]
+                [ h2 [ class "card-title" ] [ text "Counter" ]
+                , text (String.fromInt model.count)
+                , div [ class "card-actions" ]
+                    [ button [ class "btn", onClick Decrement ] [ text "-" ]
+                    , button [ class "btn", onClick Increment ] [ text "+" ]
+                    ]
+                ]
+            ]
         ]

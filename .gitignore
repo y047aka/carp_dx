@@ -1,8 +1,10 @@
 # Dependency directories
 .direnv/
+node_modules/
 
 # elm-package generated files
 elm-stuff
 
 # Distribution
 build
+public/build/output.css
