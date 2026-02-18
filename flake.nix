@@ -37,6 +37,11 @@
 
             ${run-pty}/bin/run-pty % ${pkgs.tailwindcss_4}/bin/tailwindcss -i ./src/input.css -o ./public/build/output.css --watch % ${elm-watch}/bin/elm-watch hot % ${pkgs.esbuild}/bin/esbuild app.ts --bundle --outdir=public/build --public-path=/build/ --serve=9000 --servedir=public
           '';
+
+          test = pkgs.writeShellScriptBin "test" ''
+            export PATH="${pkgs.elmPackages.elm}/bin:$PATH"
+            ${pkgs.elmPackages.elm-test}/bin/elm-test
+          '';
         };
 
         devShells.default = pkgs.mkShell {
@@ -44,6 +49,7 @@
             esbuild
             elmPackages.elm
             elmPackages.elm-format
+            elmPackages.elm-test
             tailwindcss_4
           ] ++ [
             elm-watch
@@ -63,6 +69,7 @@
             echo "Commands:"
             echo "  • nix run .#build - Build for production"
             echo "  • nix run .#dev   - Start development server"
+            echo "  • nix run .#test  - Run tests"
             echo ""
             echo "✅ All dependencies managed by Nix!"
             echo ""
