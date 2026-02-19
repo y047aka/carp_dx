@@ -380,4 +380,47 @@ suite =
             , test "4 → 2" <|
                 \_ -> Order.noodleQuantityDisplay 4 |> Expect.equal "2"
             ]
+        , describe "そば入り・うどん入りの価格計算"
+            [ test "そば入り単体は1200円" <|
+                \_ ->
+                    Order.emptyOrder
+                        |> Order.addOkonomiyakiItem MenuData.baseSoba
+                        |> Order.calculateTotal
+                        -- baseSoba.price=1200（defaultNoodle=soba 1玉分込み）
+                        |> Expect.equal 1200
+            , test "うどん入り単体は1200円" <|
+                \_ ->
+                    Order.emptyOrder
+                        |> Order.addOkonomiyakiItem MenuData.baseUdon
+                        |> Order.calculateTotal
+                        |> Expect.equal 1200
+            , test "そば入り＋そば0.5玉追加は1300円（そば1.5玉）" <|
+                \_ ->
+                    Order.emptyOrder
+                        |> Order.addOkonomiyakiItem MenuData.baseSoba
+                        |> Order.incrementNoodleQuantity 0 MenuData.noodleSoba
+                        -- noodles の soba qty: 2 → 3（1.5玉）、defaultNoodle 1玉分除外 → extra=1
+                        -- 1200 + 100×1 = 1300
+                        |> Order.calculateTotal
+                        |> Expect.equal 1300
+            , test "そば入り＋イカ天は1400円" <|
+                \_ ->
+                    Order.emptyOrder
+                        |> Order.addOkonomiyakiItem MenuData.baseSoba
+                        |> Order.addToppingToLastBase MenuData.toppingIkaten
+                        -- 1200 + 200 = 1400
+                        |> Order.calculateTotal
+                        |> Expect.equal 1400
+            , test "そば入りのそばを全部減らすとbaseYasaiに切り替わる" <|
+                \_ ->
+                    Order.emptyOrder
+                        |> Order.addOkonomiyakiItem MenuData.baseSoba
+                        |> Order.decrementNoodleQuantity 0 "noodle-soba"
+                        |> Order.decrementNoodleQuantity 0 "noodle-soba"
+                        -- qty: 2 → 1 → 0（削除）
+                        |> Order.normalizeBaseOnNoodleChange 0
+                        |> Order.calculateTotal
+                        -- baseYasai: 900
+                        |> Expect.equal 900
+            ]
         ]

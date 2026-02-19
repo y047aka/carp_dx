@@ -1,6 +1,7 @@
-module Order exposing (Order, OrderItemType(..), BaseOrderItem, StandaloneOrderItem, Addition, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, addNoodleToBase, removeNoodleFromBase, calculateTotal, calculateBaseItemTotal, calculateAdditionPrice, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, noodleQuantityDisplay, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, getLastBaseItemIndex)
+module Order exposing (Order, OrderItemType(..), BaseOrderItem, StandaloneOrderItem, Addition, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, addNoodleToBase, removeNoodleFromBase, calculateTotal, calculateBaseItemTotal, calculateAdditionPrice, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, noodleQuantityDisplay, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, getLastBaseItemIndex, addOkonomiyakiItem, normalizeBaseOnNoodleChange, normalizeBaseOnNoodleAdd)
 
 import Menu exposing (MenuItem(..), menuItemId)
+import MenuData
 
 
 -- お好み焼きに付属する追加オプション（麺、トッピング）
@@ -556,6 +557,9 @@ calculateAdditionPrice item quantity =
         StandardItem r ->
             r.price * quantity
 
+        OkonomiyakiItem r ->
+            r.price * quantity
+
         NoodleItem r ->
             r.basePrice + r.pricePerHalfBall * quantity
 
@@ -569,21 +573,49 @@ calculateBaseItemTotal baseItem =
                 StandardItem r ->
                     r.price
 
+                OkonomiyakiItem r ->
+                    r.price
+
                 NoodleItem r ->
                     r.basePrice
 
         noodlePrice =
             let
-                totalNoodleQuantity =
+                -- OkonomiyakiItem の defaultNoodle は price に含まれているため、その1玉分（qty=2）を除外
+                defaultNoodleId =
+                    case baseItem.baseItem of
+                        OkonomiyakiItem r ->
+                            Maybe.map menuItemId r.defaultNoodle
+
+                        _ ->
+                            Nothing
+
+                extraNoodleQuantity =
                     baseItem.noodles
-                        |> List.map .quantity
+                        |> List.map
+                            (\n ->
+                                case defaultNoodleId of
+                                    Just dnId ->
+                                        if menuItemId n.menuItem == dnId then
+                                            max 0 (n.quantity - 2)
+
+                                        else
+                                            n.quantity
+
+                                    Nothing ->
+                                        n.quantity
+                            )
                         |> List.sum
             in
-            if totalNoodleQuantity == 0 then
+            if extraNoodleQuantity == 0 then
                 0
 
+            else if defaultNoodleId /= Nothing then
+                -- defaultNoodle の基本料金は price に含まれているため、追加分のみ
+                100 * extraNoodleQuantity
+
             else
-                100 + 100 * totalNoodleQuantity
+                100 + 100 * extraNoodleQuantity
 
         toppingsPrice =
             baseItem.toppings
@@ -607,3 +639,119 @@ calculateTotal order =
                         calculateAdditionPrice standaloneItem.menuItem standaloneItem.quantity
             )
         |> List.sum
+
+
+-- OkonomiyakiItem を注文に追加。defaultNoodle があれば noodles に1玉セットして追加
+addOkonomiyakiItem : MenuItem -> Order -> Order
+addOkonomiyakiItem menuItem order =
+    let
+        initialNoodles =
+            case menuItem of
+                OkonomiyakiItem r ->
+                    case r.defaultNoodle of
+                        Just noodleItem ->
+                            [ { menuItem = noodleItem, quantity = 2 } ]
+
+                        Nothing ->
+                            []
+
+                _ ->
+                    []
+
+        newBaseItem =
+            { baseItem = menuItem
+            , quantity = 1
+            , noodles = initialNoodles
+            , toppings = []
+            }
+    in
+    { order | items = order.items ++ [ BaseOrder newBaseItem ] }
+
+
+-- 麺の「＋」操作後に呼ぶ。baseYasai（defaultNoodle なし）の場合に追加した麺に応じてベースを切り替える
+normalizeBaseOnNoodleAdd : Int -> MenuItem -> Order -> Order
+normalizeBaseOnNoodleAdd index noodleItem order =
+    { order
+        | items =
+            List.indexedMap
+                (\i item ->
+                    if i == index then
+                        case item of
+                            BaseOrder baseItem ->
+                                let
+                                    newBase =
+                                        case ( baseItem.baseItem, noodleItem ) of
+                                            ( OkonomiyakiItem r, NoodleItem nr ) ->
+                                                if r.defaultNoodle == Nothing then
+                                                    if nr.id == "noodle-soba" then
+                                                        MenuData.baseSoba
+
+                                                    else if nr.id == "noodle-udon" then
+                                                        MenuData.baseUdon
+
+                                                    else
+                                                        baseItem.baseItem
+
+                                                else
+                                                    baseItem.baseItem
+
+                                            _ ->
+                                                baseItem.baseItem
+                                in
+                                BaseOrder { baseItem | baseItem = newBase }
+
+                            _ ->
+                                item
+
+                    else
+                        item
+                )
+                order.items
+    }
+
+
+-- 麺の「−」操作後に呼ぶ。defaultNoodle が0玉になった場合に baseItem を baseYasai に切り替える
+normalizeBaseOnNoodleChange : Int -> Order -> Order
+normalizeBaseOnNoodleChange index order =
+    { order
+        | items =
+            List.indexedMap
+                (\i item ->
+                    if i == index then
+                        case item of
+                            BaseOrder baseItem ->
+                                let
+                                    newBase =
+                                        case baseItem.baseItem of
+                                            OkonomiyakiItem r ->
+                                                case r.defaultNoodle of
+                                                    Just defaultNoodleItem ->
+                                                        let
+                                                            defaultNoodleQty =
+                                                                baseItem.noodles
+                                                                    |> List.filter (\n -> menuItemId n.menuItem == menuItemId defaultNoodleItem)
+                                                                    |> List.map .quantity
+                                                                    |> List.sum
+                                                        in
+                                                        if defaultNoodleQty == 0 then
+                                                            MenuData.baseYasai
+
+                                                        else
+                                                            baseItem.baseItem
+
+                                                    Nothing ->
+                                                        baseItem.baseItem
+
+                                            _ ->
+                                                baseItem.baseItem
+                                in
+                                BaseOrder { baseItem | baseItem = newBase }
+
+                            _ ->
+                                item
+
+                    else
+                        item
+                )
+                order.items
+    }

@@ -62,27 +62,12 @@ update msg model =
             { model | selectedCategory = category }
 
         AddMenuItem menuItem ->
-            let
-                newOrder =
-                    case menuItemCategory menuItem of
-                        Base ->
-                            Order.addBaseItem menuItem model.currentOrder
-
-                        Noodle ->
-                            Order.addNoodleToLastBase menuItem model.currentOrder
-
-                        Topping ->
-                            Order.addToppingToLastBase menuItem model.currentOrder
-
-                        Grilled ->
-                            Order.addStandaloneItem menuItem model.currentOrder
-
-                        Drink ->
-                            Order.addStandaloneItem menuItem model.currentOrder
-            in
             case menuItemCategory menuItem of
                 Base ->
                     let
+                        newOrder =
+                            Order.addOkonomiyakiItem menuItem model.currentOrder
+
                         lastIndex =
                             List.length newOrder.items - 1
                     in
@@ -92,8 +77,17 @@ update msg model =
                         , isAddingNewBase = True
                     }
 
-                _ ->
-                    { model | currentOrder = newOrder }
+                Noodle ->
+                    { model | currentOrder = Order.addNoodleToLastBase menuItem model.currentOrder }
+
+                Topping ->
+                    { model | currentOrder = Order.addToppingToLastBase menuItem model.currentOrder }
+
+                Grilled ->
+                    { model | currentOrder = Order.addStandaloneItem menuItem model.currentOrder }
+
+                Drink ->
+                    { model | currentOrder = Order.addStandaloneItem menuItem model.currentOrder }
 
         CancelAddingBase ->
             let
@@ -116,10 +110,20 @@ update msg model =
             { model | currentOrder = Order.decrementBaseQuantity index model.currentOrder }
 
         IncrementNoodleQuantity index noodleItem ->
-            { model | currentOrder = Order.incrementNoodleQuantity index noodleItem model.currentOrder }
+            { model
+                | currentOrder =
+                    model.currentOrder
+                        |> Order.incrementNoodleQuantity index noodleItem
+                        |> Order.normalizeBaseOnNoodleAdd index noodleItem
+            }
 
         DecrementNoodleQuantity index noodleId ->
-            { model | currentOrder = Order.decrementNoodleQuantity index noodleId model.currentOrder }
+            { model
+                | currentOrder =
+                    model.currentOrder
+                        |> Order.decrementNoodleQuantity index noodleId
+                        |> Order.normalizeBaseOnNoodleChange index
+            }
 
         ToggleTopping index toppingItem ->
             { model | currentOrder = Order.toggleTopping index toppingItem model.currentOrder }
@@ -218,6 +222,9 @@ menuItemCard item =
         priceText =
             case item of
                 StandardItem r ->
+                    "¥" ++ String.fromInt r.price
+
+                OkonomiyakiItem r ->
                     "¥" ++ String.fromInt r.price
 
                 NoodleItem r ->
@@ -433,7 +440,7 @@ editBaseModal model =
                                     , div [ class "grid grid-cols-2 gap-3" ]
                                         (MenuData.allMenuItems
                                             |> List.filter (\item -> menuItemCategory item == Noodle)
-                                            |> List.map (noodleMenuItem index baseItem.noodles)
+                                            |> List.map (noodleMenuItem index baseItem)
                                         )
                                     ]
 
@@ -512,22 +519,37 @@ editBaseModal model =
                         ]
 
 
-noodleMenuItem : Int -> List Addition -> MenuItem -> Html Msg
-noodleMenuItem baseIndex currentNoodles item =
+noodleMenuItem : Int -> BaseOrderItem -> MenuItem -> Html Msg
+noodleMenuItem baseIndex baseOrderItem item =
     let
-        currentQuantity =
-            currentNoodles
+        -- noodles リスト内の数量
+        noodleQuantity =
+            baseOrderItem.noodles
                 |> List.filter (\n -> menuItemId n.menuItem == menuItemId item)
                 |> List.head
                 |> Maybe.map .quantity
                 |> Maybe.withDefault 0
 
+        -- OkonomiyakiItem の defaultNoodle として麺が内包されているか
+        isEmbeddedInBase =
+            case baseOrderItem.baseItem of
+                OkonomiyakiItem r ->
+                    case r.defaultNoodle of
+                        Just defaultNoodleItem ->
+                            menuItemId defaultNoodleItem == menuItemId item
+
+                        Nothing ->
+                            False
+
+                _ ->
+                    False
+
         isSelected =
-            currentQuantity > 0
+            noodleQuantity > 0 || isEmbeddedInBase
 
         priceText =
-            if currentQuantity > 0 then
-                "¥" ++ String.fromInt (Order.calculateAdditionPrice item currentQuantity)
+            if noodleQuantity > 0 then
+                "¥" ++ String.fromInt (Order.calculateAdditionPrice item noodleQuantity)
 
             else
                 "¥" ++ String.fromInt (Order.calculateAdditionPrice item 2)
@@ -548,16 +570,16 @@ noodleMenuItem baseIndex currentNoodles item =
             [ button
                 [ class "btn btn-xs btn-circle btn-outline"
                 , onClick (DecrementNoodleQuantity baseIndex (menuItemId item))
-                , disabled (currentQuantity == 0)
+                , disabled (not isSelected)
                 ]
                 [ text "−" ]
             , span
                 [ class "text-lg font-bold w-12 text-center"
-                , classList [ ( "text-base-content/30", currentQuantity == 0 ) ]
+                , classList [ ( "text-base-content/30", not isSelected ) ]
                 ]
                 [ text
-                    (if currentQuantity > 0 then
-                        Order.noodleQuantityDisplay currentQuantity ++ "玉"
+                    (if noodleQuantity > 0 then
+                        Order.noodleQuantityDisplay noodleQuantity ++ "玉"
 
                      else
                         "0玉"

@@ -1,6 +1,8 @@
 module MenuData exposing
     ( allMenuItems
     , baseYasai
+    , baseSoba
+    , baseUdon
     , noodleSoba
     , noodleUdon
     , toppingIkaten
@@ -27,10 +29,33 @@ import Menu exposing (MenuCategory(..), MenuItem(..))
 
 baseYasai : MenuItem
 baseYasai =
-    StandardItem
+    OkonomiyakiItem
         { id = "base-yasai"
-        , name = "野菜入り（豚肉・卵）"
+        , name = "野菜入り"
         , price = 900
+        , defaultNoodle = Nothing
+        , category = Base
+        }
+
+
+baseSoba : MenuItem
+baseSoba =
+    OkonomiyakiItem
+        { id = "base-soba"
+        , name = "そば入り"
+        , price = 1200
+        , defaultNoodle = Just noodleSoba
+        , category = Base
+        }
+
+
+baseUdon : MenuItem
+baseUdon =
+    OkonomiyakiItem
+        { id = "base-udon"
+        , name = "うどん入り"
+        , price = 1200
+        , defaultNoodle = Just noodleUdon
         , category = Base
         }
 
@@ -221,6 +246,8 @@ allMenuItems : List MenuItem
 allMenuItems =
     [ -- お好み焼き
       baseYasai
+    , baseSoba
+    , baseUdon
 
     -- 麺
     , noodleSoba
