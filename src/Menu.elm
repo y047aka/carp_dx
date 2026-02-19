@@ -1,4 +1,4 @@
-module Menu exposing (MenuItem(..), MenuCategory(..), categoryName, categoryToString, menuItemId, menuItemName, menuItemCategory)
+module Menu exposing (MenuItem(..), MenuCategory(..), categoryName, categoryToString, menuItemId, menuItemName, menuItemCategory, menuItemPrice)
 
 
 type MenuCategory
@@ -96,3 +96,17 @@ categoryToString category =
 
         Drink ->
             "drink"
+
+
+-- MenuItem の種類に応じた価格計算
+menuItemPrice : MenuItem -> Int -> Int
+menuItemPrice item quantity =
+    case item of
+        StandardItem r ->
+            r.price * quantity
+
+        OkonomiyakiItem r ->
+            r.price * quantity
+
+        NoodleItem r ->
+            r.basePrice + r.pricePerHalfBall * quantity

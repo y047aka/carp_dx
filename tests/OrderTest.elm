@@ -2,127 +2,15 @@ module OrderTest exposing (suite)
 
 import Expect
 import MenuData
-import Order exposing (Addition, BaseOrderItem, Order, OrderItemType(..), StandaloneOrderItem)
+import Okonomiyaki
+import Order exposing (OrderItemType(..))
 import Test exposing (..)
 
 
 suite : Test
 suite =
     describe "Order"
-        [ describe "お好み焼きベースの計算"
-            [ test "お好み焼き1つの価格" <|
-                \_ ->
-                    let
-                        baseItem =
-                            { baseItem = MenuData.baseYasai
-                            , quantity = 1
-                            , noodles = []
-                            , toppings = []
-                            }
-                    in
-                    Order.calculateBaseItemTotal baseItem
-                        |> Expect.equal 900
-            , test "お好み焼き2つの価格" <|
-                \_ ->
-                    let
-                        baseItem =
-                            { baseItem = MenuData.baseYasai
-                            , quantity = 2
-                            , noodles = []
-                            , toppings = []
-                            }
-                    in
-                    Order.calculateBaseItemTotal baseItem
-                        |> Expect.equal 1800
-            , test "お好み焼き + 麺（そば 0.5玉）の価格" <|
-                \_ ->
-                    let
-                        baseItem =
-                            { baseItem = MenuData.baseYasai
-                            , quantity = 1
-                            , noodles = [ { menuItem = MenuData.noodleSoba, quantity = 1 } ]
-                            , toppings = []
-                            }
-                    in
-                    -- 900 + (100 + 100×1) = 1100
-                    Order.calculateBaseItemTotal baseItem
-                        |> Expect.equal 1100
-            , test "お好み焼き + 麺 × お好み焼きの数量の価格" <|
-                \_ ->
-                    let
-                        baseItem =
-                            { baseItem = MenuData.baseYasai
-                            , quantity = 2
-                            , noodles = [ { menuItem = MenuData.noodleSoba, quantity = 1 } ]
-                            , toppings = []
-                            }
-                    in
-                    -- (900 + (100 + 100×1)) × 2 = 2200
-                    Order.calculateBaseItemTotal baseItem
-                        |> Expect.equal 2200
-            , test "お好み焼き + トッピング1つの価格" <|
-                \_ ->
-                    let
-                        baseItem =
-                            { baseItem = MenuData.baseYasai
-                            , quantity = 1
-                            , noodles = []
-                            , toppings =
-                                [ { menuItem = MenuData.toppingIkaten, quantity = 1 }
-                                ]
-                            }
-                    in
-                    Order.calculateBaseItemTotal baseItem
-                        |> Expect.equal 1100
-            , test "お好み焼き + トッピング複数の価格" <|
-                \_ ->
-                    let
-                        baseItem =
-                            { baseItem = MenuData.baseYasai
-                            , quantity = 1
-                            , noodles = []
-                            , toppings =
-                                [ { menuItem = MenuData.toppingIkaten, quantity = 1 }
-                                , { menuItem = MenuData.toppingNegi, quantity = 2 }
-                                ]
-                            }
-                    in
-                    -- 900 + 200 + (250 × 2) = 1600
-                    Order.calculateBaseItemTotal baseItem
-                        |> Expect.equal 1600
-            , test "お好み焼き + 麺 + トッピングの価格" <|
-                \_ ->
-                    let
-                        baseItem =
-                            { baseItem = MenuData.baseYasai
-                            , quantity = 1
-                            , noodles = [ { menuItem = MenuData.noodleSoba, quantity = 1 } ]
-                            , toppings =
-                                [ { menuItem = MenuData.toppingIkaten, quantity = 1 }
-                                , { menuItem = MenuData.toppingNegi, quantity = 1 }
-                                ]
-                            }
-                    in
-                    -- 900 + (100 + 100×1) + 200 + 250 = 1550
-                    Order.calculateBaseItemTotal baseItem
-                        |> Expect.equal 1550
-            , test "お好み焼き複数 + 麺 + トッピングの価格" <|
-                \_ ->
-                    let
-                        baseItem =
-                            { baseItem = MenuData.baseYasai
-                            , quantity = 3
-                            , noodles = [ { menuItem = MenuData.noodleSoba, quantity = 1 } ]
-                            , toppings =
-                                [ { menuItem = MenuData.toppingIkaten, quantity = 2 }
-                                ]
-                            }
-                    in
-                    -- (900 + (100 + 100×1) + (200 × 2)) × 3 = 1500 × 3 = 4500
-                    Order.calculateBaseItemTotal baseItem
-                        |> Expect.equal 4500
-            ]
-        , describe "注文全体の合計計算"
+        [ describe "注文全体の合計計算"
             [ test "空の注文は0円" <|
                 \_ ->
                     Order.emptyOrder
@@ -131,7 +19,7 @@ suite =
             , test "お好み焼き1つの注文" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
                         |> Order.calculateTotal
                         |> Expect.equal 900
             , test "独立商品（焼き物）1つの注文" <|
@@ -150,23 +38,23 @@ suite =
             , test "お好み焼き + 麺の注文" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
-                        |> Order.addNoodleToLastBase MenuData.noodleSoba
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×2)（1玉） = 1200
                         |> Expect.equal 1200
             , test "お好み焼き + トッピングの注文" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
                         |> Order.addToppingToLastBase MenuData.toppingIkaten
                         |> Order.calculateTotal
                         |> Expect.equal 1100
             , test "複雑な注文の合計" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
-                        |> Order.addNoodleToLastBase MenuData.noodleSoba
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
                         |> Order.addToppingToLastBase MenuData.toppingIkaten
                         |> Order.addToppingToLastBase MenuData.toppingNegi
                         |> Order.addStandaloneItem MenuData.grilledKaki
@@ -182,8 +70,8 @@ suite =
                     let
                         order =
                             Order.emptyOrder
-                                |> Order.addBaseItem MenuData.baseYasai
-                                |> Order.addNoodleToLastBase MenuData.noodleSoba
+                                |> Order.addBaseItem Okonomiyaki.baseYasai
+                                |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
 
                         orderWithQuantity =
                             { order
@@ -214,7 +102,7 @@ suite =
                     let
                         order =
                             Order.emptyOrder
-                                |> Order.addBaseItem MenuData.baseYasai
+                                |> Order.addBaseItem Okonomiyaki.baseYasai
                     in
                     List.length order.items
                         |> Expect.equal 1
@@ -249,7 +137,7 @@ suite =
                     let
                         order =
                             Order.emptyOrder
-                                |> Order.addBaseItem MenuData.baseYasai
+                                |> Order.addBaseItem Okonomiyaki.baseYasai
                                 |> Order.incrementBaseQuantity 0
 
                         firstItem =
@@ -266,7 +154,7 @@ suite =
                     let
                         order =
                             Order.emptyOrder
-                                |> Order.addBaseItem MenuData.baseYasai
+                                |> Order.addBaseItem Okonomiyaki.baseYasai
                                 |> Order.incrementBaseQuantity 0
                                 |> Order.decrementBaseQuantity 0
 
@@ -284,7 +172,7 @@ suite =
                     let
                         order =
                             Order.emptyOrder
-                                |> Order.addBaseItem MenuData.baseYasai
+                                |> Order.addBaseItem Okonomiyaki.baseYasai
                                 |> Order.decrementBaseQuantity 0
                     in
                     List.length order.items
@@ -294,111 +182,101 @@ suite =
             [ test "麺追加時は1玉（内部quantity=2）" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
-                        |> Order.addNoodleToLastBase MenuData.noodleSoba
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×2) = 1200
                         |> Expect.equal 1200
             , test "麺の数量を増やす（1玉→1.5玉）" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
-                        |> Order.addNoodleToLastBase MenuData.noodleSoba
-                        |> Order.incrementNoodleQuantity 0 MenuData.noodleSoba
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
+                        |> Order.incrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×3) = 1300
                         |> Expect.equal 1300
             , test "麺の数量を減らす（1玉→0.5玉）" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
-                        |> Order.addNoodleToLastBase MenuData.noodleSoba
-                        |> Order.decrementNoodleQuantity 0 "noodle-soba"
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
+                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×1) = 1100
                         |> Expect.equal 1100
             , test "0.5玉から減らすと麺が削除される" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
-                        |> Order.addNoodleToLastBase MenuData.noodleSoba
-                        |> Order.decrementNoodleQuantity 0 "noodle-soba"
-                        |> Order.decrementNoodleQuantity 0 "noodle-soba"
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
+                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
+                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.calculateTotal
                         -- 麺なし: 900
                         |> Expect.equal 900
             , test "そばとうどんを同時に追加できる" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
-                        |> Order.addNoodleToLastBase MenuData.noodleSoba
-                        |> Order.addNoodleToLastBase MenuData.noodleUdon
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleUdon
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×4) = 1400
                         |> Expect.equal 1400
             , test "複数麺のうち片方を削除しても他方が残る" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
-                        |> Order.addNoodleToLastBase MenuData.noodleSoba
-                        |> Order.addNoodleToLastBase MenuData.noodleUdon
-                        |> Order.decrementNoodleQuantity 0 "noodle-soba"
-                        |> Order.decrementNoodleQuantity 0 "noodle-soba"
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleUdon
+                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
+                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×2) = 1200（うどんのみ残る）
                         |> Expect.equal 1200
             , test "ちゃんぽん（そば0.5玉 + うどん0.5玉 = 1玉）" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
-                        |> Order.addNoodleToLastBase MenuData.noodleSoba
-                        |> Order.addNoodleToLastBase MenuData.noodleUdon
-                        |> Order.decrementNoodleQuantity 0 "noodle-soba"
-                        |> Order.decrementNoodleQuantity 0 "noodle-udon"
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleUdon
+                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
+                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleUdon
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×2) = 1200
                         |> Expect.equal 1200
             , test "ちゃんぽん（そば1.5玉 + うどん0.5玉 = 2玉）" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addBaseItem MenuData.baseYasai
-                        |> Order.addNoodleToLastBase MenuData.noodleSoba
-                        |> Order.incrementNoodleQuantity 0 MenuData.noodleSoba
-                        |> Order.addNoodleToLastBase MenuData.noodleUdon
-                        |> Order.decrementNoodleQuantity 0 "noodle-udon"
+                        |> Order.addBaseItem Okonomiyaki.baseYasai
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
+                        |> Order.incrementNoodleQuantity 0 Okonomiyaki.noodleSoba
+                        |> Order.addNoodleToLastBase Okonomiyaki.noodleUdon
+                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleUdon
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×4) = 1400
                         |> Expect.equal 1400
-            ]
-        , describe "noodleQuantityDisplay"
-            [ test "1 → 0.5" <|
-                \_ -> Order.noodleQuantityDisplay 1 |> Expect.equal "0.5"
-            , test "2 → 1" <|
-                \_ -> Order.noodleQuantityDisplay 2 |> Expect.equal "1"
-            , test "3 → 1.5" <|
-                \_ -> Order.noodleQuantityDisplay 3 |> Expect.equal "1.5"
-            , test "4 → 2" <|
-                \_ -> Order.noodleQuantityDisplay 4 |> Expect.equal "2"
             ]
         , describe "そば入り・うどん入りの価格計算"
             [ test "そば入り単体は1200円" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addOkonomiyakiItem MenuData.baseSoba
+                        |> Order.addBaseItem Okonomiyaki.baseSoba
                         |> Order.calculateTotal
                         -- baseSoba.price=1200（defaultNoodle=soba 1玉分込み）
                         |> Expect.equal 1200
             , test "うどん入り単体は1200円" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addOkonomiyakiItem MenuData.baseUdon
+                        |> Order.addBaseItem Okonomiyaki.baseUdon
                         |> Order.calculateTotal
                         |> Expect.equal 1200
             , test "そば入り＋そば0.5玉追加は1300円（そば1.5玉）" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addOkonomiyakiItem MenuData.baseSoba
-                        |> Order.incrementNoodleQuantity 0 MenuData.noodleSoba
+                        |> Order.addBaseItem Okonomiyaki.baseSoba
+                        |> Order.incrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         -- noodles の soba qty: 2 → 3（1.5玉）、defaultNoodle 1玉分除外 → extra=1
                         -- 1200 + 100×1 = 1300
                         |> Order.calculateTotal
@@ -406,7 +284,7 @@ suite =
             , test "そば入り＋イカ天は1400円" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addOkonomiyakiItem MenuData.baseSoba
+                        |> Order.addBaseItem Okonomiyaki.baseSoba
                         |> Order.addToppingToLastBase MenuData.toppingIkaten
                         -- 1200 + 200 = 1400
                         |> Order.calculateTotal
@@ -414,9 +292,9 @@ suite =
             , test "そば入りのそばを全部減らすとbaseYasaiに切り替わる" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.addOkonomiyakiItem MenuData.baseSoba
-                        |> Order.decrementNoodleQuantity 0 "noodle-soba"
-                        |> Order.decrementNoodleQuantity 0 "noodle-soba"
+                        |> Order.addBaseItem Okonomiyaki.baseSoba
+                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
+                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         -- qty: 2 → 1 → 0（削除）
                         |> Order.normalizeBaseOnNoodleChange 0
                         |> Order.calculateTotal

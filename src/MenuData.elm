@@ -1,10 +1,5 @@
 module MenuData exposing
     ( allMenuItems
-    , baseYasai
-    , baseSoba
-    , baseUdon
-    , noodleSoba
-    , noodleUdon
     , toppingIkaten
     , toppingMochi
     , toppingNegi
@@ -22,68 +17,7 @@ module MenuData exposing
     )
 
 import Menu exposing (MenuCategory(..), MenuItem(..))
-
-
--- お好み焼き（ベース）
-
-
-baseYasai : MenuItem
-baseYasai =
-    OkonomiyakiItem
-        { id = "base-yasai"
-        , name = "野菜入り"
-        , price = 900
-        , defaultNoodle = Nothing
-        , category = Base
-        }
-
-
-baseSoba : MenuItem
-baseSoba =
-    OkonomiyakiItem
-        { id = "base-soba"
-        , name = "そば入り"
-        , price = 1200
-        , defaultNoodle = Just noodleSoba
-        , category = Base
-        }
-
-
-baseUdon : MenuItem
-baseUdon =
-    OkonomiyakiItem
-        { id = "base-udon"
-        , name = "うどん入り"
-        , price = 1200
-        , defaultNoodle = Just noodleUdon
-        , category = Base
-        }
-
-
-
--- 麺
-
-
-noodleSoba : MenuItem
-noodleSoba =
-    NoodleItem
-        { id = "noodle-soba"
-        , name = "そば"
-        , basePrice = 100
-        , pricePerHalfBall = 100
-        , category = Noodle
-        }
-
-
-noodleUdon : MenuItem
-noodleUdon =
-    NoodleItem
-        { id = "noodle-udon"
-        , name = "うどん"
-        , basePrice = 100
-        , pricePerHalfBall = 100
-        , category = Noodle
-        }
+import Okonomiyaki
 
 
 
@@ -245,13 +179,13 @@ drinkSoft =
 allMenuItems : List MenuItem
 allMenuItems =
     [ -- お好み焼き
-      baseYasai
-    , baseSoba
-    , baseUdon
+      Okonomiyaki.baseYasai
+    , Okonomiyaki.baseSoba
+    , Okonomiyaki.baseUdon
 
     -- 麺
-    , noodleSoba
-    , noodleUdon
+    , Okonomiyaki.noodleSoba
+    , Okonomiyaki.noodleUdon
 
     -- トッピング
     , toppingIkaten

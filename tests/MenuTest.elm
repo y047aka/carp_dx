@@ -1,9 +1,9 @@
 module MenuTest exposing (suite)
 
 import Expect
-import Menu exposing (MenuItem(..), menuItemId, menuItemName)
+import Menu exposing (MenuItem(..), menuItemId, menuItemName, menuItemPrice)
 import MenuData exposing (..)
-import Order
+import Okonomiyaki
 import Test exposing (..)
 
 
@@ -11,13 +11,13 @@ suite : Test
 suite =
     describe "Menu"
         [ describe "お好み焼き（ベース）"
-            [ testOkonomiyakiMenuItem "野菜入り" 900 Nothing baseYasai
-            , testOkonomiyakiMenuItem "そば入り" 1200 (Just "noodle-soba") baseSoba
-            , testOkonomiyakiMenuItem "うどん入り" 1200 (Just "noodle-udon") baseUdon
+            [ testOkonomiyakiMenuItem "野菜入り" 900 Nothing Okonomiyaki.baseYasai
+            , testOkonomiyakiMenuItem "そば入り" 1200 (Just "noodle-soba") Okonomiyaki.baseSoba
+            , testOkonomiyakiMenuItem "うどん入り" 1200 (Just "noodle-udon") Okonomiyaki.baseUdon
             ]
         , describe "麺"
-            [ testNoodleMenuItem "そば" 100 100 noodleSoba
-            , testNoodleMenuItem "うどん" 100 100 noodleUdon
+            [ testNoodleMenuItem "そば" 100 100 Okonomiyaki.noodleSoba
+            , testNoodleMenuItem "うどん" 100 100 Okonomiyaki.noodleUdon
             ]
         , describe "トッピング"
             [ testStandardMenuItem "イカ天" 200 toppingIkaten
@@ -53,7 +53,7 @@ suite =
             , test "すべてのメニュー項目の価格が正の数" <|
                 \_ ->
                     allMenuItems
-                        |> List.all (\item -> Order.calculateAdditionPrice item 1 > 0)
+                        |> List.all (\item -> menuItemPrice item 1 > 0)
                         |> Expect.equal True
             , test "全19品目が登録されている" <|
                 \_ ->

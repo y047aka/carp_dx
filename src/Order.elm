@@ -1,23 +1,7 @@
-module Order exposing (Order, OrderItemType(..), BaseOrderItem, StandaloneOrderItem, Addition, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, addNoodleToBase, removeNoodleFromBase, calculateTotal, calculateBaseItemTotal, calculateAdditionPrice, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, noodleQuantityDisplay, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, getLastBaseItemIndex, addOkonomiyakiItem, normalizeBaseOnNoodleChange, normalizeBaseOnNoodleAdd)
+module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, normalizeBaseOnNoodleChange, normalizeBaseOnNoodleAdd)
 
-import Menu exposing (MenuItem(..), menuItemId)
-import MenuData
-
-
--- お好み焼きに付属する追加オプション（麺、トッピング）
-type alias Addition =
-    { menuItem : MenuItem
-    , quantity : Int
-    }
-
-
--- お好み焼きベースの注文アイテム
-type alias BaseOrderItem =
-    { baseItem : MenuItem          -- お好み焼き本体
-    , quantity : Int               -- お好み焼きの数量
-    , noodles : List Addition       -- 麺（複数可）
-    , toppings : List Addition     -- トッピング（複数可）
-    }
+import Menu exposing (MenuItem(..), menuItemId, menuItemPrice)
+import Okonomiyaki exposing (BaseOrderItem)
 
 
 -- 独立した商品（焼き物、飲み物）
@@ -48,15 +32,7 @@ emptyOrder =
 -- 新しいお好み焼きを追加
 addBaseItem : MenuItem -> Order -> Order
 addBaseItem menuItem order =
-    let
-        newBaseItem =
-            { baseItem = menuItem
-            , quantity = 1
-            , noodles = []
-            , toppings = []
-            }
-    in
-    { order | items = order.items ++ [ BaseOrder newBaseItem ] }
+    { order | items = order.items ++ [ BaseOrder (Okonomiyaki.initialBaseOrderItem menuItem) ] }
 
 
 -- 独立商品（焼き物・飲み物）を追加または数量を増やす
@@ -248,34 +224,6 @@ addToppingToBase index toppingItem order =
     }
 
 
--- 特定インデックスのお好み焼きから麺を削除
-removeNoodleFromBase : Int -> String -> Order -> Order
-removeNoodleFromBase index noodleId order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == index then
-                        case item of
-                            BaseOrder baseItem ->
-                                BaseOrder
-                                    { baseItem
-                                        | noodles =
-                                            List.filter
-                                                (\n -> menuItemId n.menuItem /= noodleId)
-                                                baseItem.noodles
-                                    }
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-    }
-
-
 -- 特定インデックスのお好み焼きからトッピングを削除
 removeToppingFromBase : Int -> String -> Order -> Order
 removeToppingFromBase index toppingId order =
@@ -442,8 +390,8 @@ incrementNoodleQuantity baseIndex noodleItem order =
 
 
 -- 麺の数量を減らす（0.5玉単位、内部的に-1。0になったら削除）
-decrementNoodleQuantity : Int -> String -> Order -> Order
-decrementNoodleQuantity baseIndex noodleId order =
+decrementNoodleQuantity : Int -> MenuItem -> Order -> Order
+decrementNoodleQuantity baseIndex noodleItem order =
     { order
         | items =
             List.indexedMap
@@ -456,7 +404,7 @@ decrementNoodleQuantity baseIndex noodleId order =
                                         | noodles =
                                             List.map
                                                 (\n ->
-                                                    if menuItemId n.menuItem == noodleId then
+                                                    if menuItemId n.menuItem == menuItemId noodleItem then
                                                         { n | quantity = max 0 (n.quantity - 1) }
 
                                                     else
@@ -474,27 +422,6 @@ decrementNoodleQuantity baseIndex noodleId order =
                 )
                 order.items
     }
-
-
--- 麺の内部quantity値を表示用文字列に変換（1→"0.5", 2→"1", 3→"1.5"...）
-noodleQuantityDisplay : Int -> String
-noodleQuantityDisplay internalQuantity =
-    let
-        wholePart =
-            internalQuantity // 2
-
-        hasHalf =
-            modBy 2 internalQuantity /= 0
-    in
-    if hasHalf then
-        if wholePart == 0 then
-            "0.5"
-
-        else
-            String.fromInt wholePart ++ ".5"
-
-    else
-        String.fromInt wholePart
 
 
 -- 独立商品の数量を増やす
@@ -550,81 +477,6 @@ decrementStandaloneQuantity targetId order =
     }
 
 
--- 追加オプションの価格計算（MenuItem の種類に応じて計算方法を切り替え）
-calculateAdditionPrice : MenuItem -> Int -> Int
-calculateAdditionPrice item quantity =
-    case item of
-        StandardItem r ->
-            r.price * quantity
-
-        OkonomiyakiItem r ->
-            r.price * quantity
-
-        NoodleItem r ->
-            r.basePrice + r.pricePerHalfBall * quantity
-
-
--- お好み焼きベースの小計計算（本体 + 麺 + トッピング）× お好み焼きの数量
-calculateBaseItemTotal : BaseOrderItem -> Int
-calculateBaseItemTotal baseItem =
-    let
-        basePrice =
-            case baseItem.baseItem of
-                StandardItem r ->
-                    r.price
-
-                OkonomiyakiItem r ->
-                    r.price
-
-                NoodleItem r ->
-                    r.basePrice
-
-        noodlePrice =
-            let
-                -- OkonomiyakiItem の defaultNoodle は price に含まれているため、その1玉分（qty=2）を除外
-                defaultNoodleId =
-                    case baseItem.baseItem of
-                        OkonomiyakiItem r ->
-                            Maybe.map menuItemId r.defaultNoodle
-
-                        _ ->
-                            Nothing
-
-                extraNoodleQuantity =
-                    baseItem.noodles
-                        |> List.map
-                            (\n ->
-                                case defaultNoodleId of
-                                    Just dnId ->
-                                        if menuItemId n.menuItem == dnId then
-                                            max 0 (n.quantity - 2)
-
-                                        else
-                                            n.quantity
-
-                                    Nothing ->
-                                        n.quantity
-                            )
-                        |> List.sum
-            in
-            if extraNoodleQuantity == 0 then
-                0
-
-            else if defaultNoodleId /= Nothing then
-                -- defaultNoodle の基本料金は price に含まれているため、追加分のみ
-                100 * extraNoodleQuantity
-
-            else
-                100 + 100 * extraNoodleQuantity
-
-        toppingsPrice =
-            baseItem.toppings
-                |> List.map (\t -> calculateAdditionPrice t.menuItem t.quantity)
-                |> List.sum
-    in
-    (basePrice + noodlePrice + toppingsPrice) * baseItem.quantity
-
-
 -- 注文全体の合計金額
 calculateTotal : Order -> Int
 calculateTotal order =
@@ -633,39 +485,12 @@ calculateTotal order =
             (\item ->
                 case item of
                     BaseOrder baseItem ->
-                        calculateBaseItemTotal baseItem
+                        Okonomiyaki.calculateBaseItemTotal baseItem
 
                     StandaloneOrder standaloneItem ->
-                        calculateAdditionPrice standaloneItem.menuItem standaloneItem.quantity
+                        menuItemPrice standaloneItem.menuItem standaloneItem.quantity
             )
         |> List.sum
-
-
--- OkonomiyakiItem を注文に追加。defaultNoodle があれば noodles に1玉セットして追加
-addOkonomiyakiItem : MenuItem -> Order -> Order
-addOkonomiyakiItem menuItem order =
-    let
-        initialNoodles =
-            case menuItem of
-                OkonomiyakiItem r ->
-                    case r.defaultNoodle of
-                        Just noodleItem ->
-                            [ { menuItem = noodleItem, quantity = 2 } ]
-
-                        Nothing ->
-                            []
-
-                _ ->
-                    []
-
-        newBaseItem =
-            { baseItem = menuItem
-            , quantity = 1
-            , noodles = initialNoodles
-            , toppings = []
-            }
-    in
-    { order | items = order.items ++ [ BaseOrder newBaseItem ] }
 
 
 -- 麺の「＋」操作後に呼ぶ。baseYasai（defaultNoodle なし）の場合に追加した麺に応じてベースを切り替える
@@ -678,27 +503,7 @@ normalizeBaseOnNoodleAdd index noodleItem order =
                     if i == index then
                         case item of
                             BaseOrder baseItem ->
-                                let
-                                    newBase =
-                                        case ( baseItem.baseItem, noodleItem ) of
-                                            ( OkonomiyakiItem r, NoodleItem nr ) ->
-                                                if r.defaultNoodle == Nothing then
-                                                    if nr.id == "noodle-soba" then
-                                                        MenuData.baseSoba
-
-                                                    else if nr.id == "noodle-udon" then
-                                                        MenuData.baseUdon
-
-                                                    else
-                                                        baseItem.baseItem
-
-                                                else
-                                                    baseItem.baseItem
-
-                                            _ ->
-                                                baseItem.baseItem
-                                in
-                                BaseOrder { baseItem | baseItem = newBase }
+                                BaseOrder (Okonomiyaki.normalizeBaseOnNoodleAdd noodleItem baseItem)
 
                             _ ->
                                 item
@@ -720,32 +525,7 @@ normalizeBaseOnNoodleChange index order =
                     if i == index then
                         case item of
                             BaseOrder baseItem ->
-                                let
-                                    newBase =
-                                        case baseItem.baseItem of
-                                            OkonomiyakiItem r ->
-                                                case r.defaultNoodle of
-                                                    Just defaultNoodleItem ->
-                                                        let
-                                                            defaultNoodleQty =
-                                                                baseItem.noodles
-                                                                    |> List.filter (\n -> menuItemId n.menuItem == menuItemId defaultNoodleItem)
-                                                                    |> List.map .quantity
-                                                                    |> List.sum
-                                                        in
-                                                        if defaultNoodleQty == 0 then
-                                                            MenuData.baseYasai
-
-                                                        else
-                                                            baseItem.baseItem
-
-                                                    Nothing ->
-                                                        baseItem.baseItem
-
-                                            _ ->
-                                                baseItem.baseItem
-                                in
-                                BaseOrder { baseItem | baseItem = newBase }
+                                BaseOrder (Okonomiyaki.normalizeBaseOnNoodleChange baseItem)
 
                             _ ->
                                 item
