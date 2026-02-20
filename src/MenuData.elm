@@ -184,10 +184,6 @@ allMenuItems =
     , Okonomiyaki.baseUdon
     , Okonomiyaki.baseZenbuIri
 
-    -- 麺
-    , Okonomiyaki.noodleSoba
-    , Okonomiyaki.noodleUdon
-
     -- トッピング
     , toppingIkaten
     , toppingMochi

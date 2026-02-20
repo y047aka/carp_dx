@@ -59,24 +59,24 @@ suite =
                     \_ ->
                         Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseSobaBase
                             |> .noodles
-                            |> List.map (\n -> ( menuItemId n.menuItem, n.quantity ))
-                            |> Expect.equal [ ( "noodle-soba", 2 ) ]
+                            |> List.map (\n -> ( n.noodle.kind, n.quantity ))
+                            |> Expect.equal [ ( Okonomiyaki.NoodleKindSoba, 2 ) ]
                 ]
             , describe "baseUdonBase（込み麺: うどん）"
                 [ test "noodles に noodleUdon が1玉（quantity=2）でセットされる" <|
                     \_ ->
                         Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseUdonBase
                             |> .noodles
-                            |> List.map (\n -> ( menuItemId n.menuItem, n.quantity ))
-                            |> Expect.equal [ ( "noodle-udon", 2 ) ]
+                            |> List.map (\n -> ( n.noodle.kind, n.quantity ))
+                            |> Expect.equal [ ( Okonomiyaki.NoodleKindUdon, 2 ) ]
                 ]
             , describe "baseZenbuIriBase（込み麺なし、初期トッピング: イカ・エビ）"
                 [ test "noodles にそば1玉（quantity=2）がデフォルトでセットされる" <|
                     \_ ->
                         Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseZenbuIriBase
                             |> .noodles
-                            |> List.map (\n -> ( menuItemId n.menuItem, n.quantity ))
-                            |> Expect.equal [ ( "noodle-soba", 2 ) ]
+                            |> List.map (\n -> ( n.noodle.kind, n.quantity ))
+                            |> Expect.equal [ ( Okonomiyaki.NoodleKindSoba, 2 ) ]
                 , test "toppings にイカとエビが各1個でセットされる" <|
                     \_ ->
                         Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseZenbuIriBase
@@ -161,7 +161,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseSobaBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 1 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ]
                         , toppings = []
                         }
                             |> Okonomiyaki.normalizeBaseOnNoodleChange
@@ -193,46 +193,46 @@ suite =
                             |> Expect.equal 1800
                 , test "Soba × 1 = 1200円（そば1玉分込み）" <|
                     \_ ->
-                        { base = Okonomiyaki.baseSobaBase, quantity = 1, noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ], toppings = [] }
+                        { base = Okonomiyaki.baseSobaBase, quantity = 1, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ], toppings = [] }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 1200
                 , test "Udon × 1 = 1200円（うどん1玉分込み）" <|
                     \_ ->
-                        { base = Okonomiyaki.baseUdonBase, quantity = 1, noodles = [ { menuItem = Okonomiyaki.noodleUdon, quantity = 2 } ], toppings = [] }
+                        { base = Okonomiyaki.baseUdonBase, quantity = 1, noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ], toppings = [] }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 1200
                 ]
             , describe "込み麺なしのベース（Yasai）に麺を追加"
                 [ test "そば0.5玉追加（qty=1）: 900 + (100 + 100×1) = 1100円" <|
                     \_ ->
-                        { base = Okonomiyaki.baseYasaiBase, quantity = 1, noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 1 } ], toppings = [] }
+                        { base = Okonomiyaki.baseYasaiBase, quantity = 1, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ], toppings = [] }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 1100
                 , test "そば1玉追加（qty=2）: 900 + (100 + 100×2) = 1200円" <|
                     \_ ->
-                        { base = Okonomiyaki.baseYasaiBase, quantity = 1, noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ], toppings = [] }
+                        { base = Okonomiyaki.baseYasaiBase, quantity = 1, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ], toppings = [] }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 1200
                 , test "お好み焼き2枚 × そば0.5玉: (900 + (100 + 100×1)) × 2 = 2200円" <|
                     \_ ->
-                        { base = Okonomiyaki.baseYasaiBase, quantity = 2, noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 1 } ], toppings = [] }
+                        { base = Okonomiyaki.baseYasaiBase, quantity = 2, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ], toppings = [] }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 2200
                 ]
             , describe "込み麺ありのベース（Soba）に麺を追加・減量"
                 [ test "そば0.5玉（qty=1）: 1200 - 100×1 = 1100円（1玉分は price 込みなので差引）" <|
                     \_ ->
-                        { base = Okonomiyaki.baseSobaBase, quantity = 1, noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 1 } ], toppings = [] }
+                        { base = Okonomiyaki.baseSobaBase, quantity = 1, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ], toppings = [] }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 1100
                 , test "そば1.5玉（qty=3）: 1200 + 100×1 = 1300円（1玉分は price 込み）" <|
                     \_ ->
-                        { base = Okonomiyaki.baseSobaBase, quantity = 1, noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 3 } ], toppings = [] }
+                        { base = Okonomiyaki.baseSobaBase, quantity = 1, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 3 } ], toppings = [] }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 1300
                 , test "そば2玉（qty=4）: 1200 + 100×2 = 1400円" <|
                     \_ ->
-                        { base = Okonomiyaki.baseSobaBase, quantity = 1, noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 4 } ], toppings = [] }
+                        { base = Okonomiyaki.baseSobaBase, quantity = 1, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 4 } ], toppings = [] }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 1400
                 ]
@@ -253,7 +253,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseYasaiBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 1 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ]
                         , toppings = [ { menuItem = MenuData.toppingIkaten, quantity = 1 }, { menuItem = MenuData.toppingNegi, quantity = 1 } ]
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
@@ -262,7 +262,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseYasaiBase
                         , quantity = 3
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 1 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ]
                         , toppings = [ { menuItem = MenuData.toppingIkaten, quantity = 2 } ]
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
@@ -285,7 +285,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseZenbuIriBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings =
                             [ { menuItem = MenuData.toppingSquid, quantity = 1 }
                             , { menuItem = MenuData.toppingShrimp, quantity = 1 }
@@ -297,7 +297,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseZenbuIriBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
                         , toppings =
                             [ { menuItem = MenuData.toppingSquid, quantity = 1 }
                             , { menuItem = MenuData.toppingShrimp, quantity = 1 }
@@ -309,7 +309,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseZenbuIriBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 1 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ]
                         , toppings =
                             [ { menuItem = MenuData.toppingSquid, quantity = 1 }
                             , { menuItem = MenuData.toppingShrimp, quantity = 1 }
@@ -321,7 +321,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseZenbuIriBase
                         , quantity = 2
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings =
                             [ { menuItem = MenuData.toppingSquid, quantity = 1 }
                             , { menuItem = MenuData.toppingShrimp, quantity = 1 }
@@ -353,7 +353,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseSobaBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings =
                             [ { menuItem = MenuData.toppingSquid, quantity = 1 }
                             , { menuItem = MenuData.toppingShrimp, quantity = 1 }
@@ -367,7 +367,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseUdonBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
                         , toppings =
                             [ { menuItem = MenuData.toppingSquid, quantity = 1 }
                             , { menuItem = MenuData.toppingShrimp, quantity = 1 }
@@ -397,7 +397,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseZenbuIriBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings = [ { menuItem = MenuData.toppingShrimp, quantity = 1 } ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
@@ -408,7 +408,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseZenbuIriBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
                         , toppings = [ { menuItem = MenuData.toppingSquid, quantity = 1 } ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
@@ -432,7 +432,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseZenbuIriBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings =
                             [ { menuItem = MenuData.toppingSquid, quantity = 1 }
                             , { menuItem = MenuData.toppingShrimp, quantity = 1 }
@@ -448,7 +448,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseUdonBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
                         , toppings =
                             [ { menuItem = MenuData.toppingSquid, quantity = 1 }
                             , { menuItem = MenuData.toppingShrimp, quantity = 1 }
@@ -456,15 +456,15 @@ suite =
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
                             |> .noodles
-                            |> List.map (\n -> ( menuItemId n.menuItem, n.quantity ))
-                            |> Expect.equal [ ( "noodle-udon", 2 ) ]
+                            |> List.map (\n -> ( n.noodle.kind, n.quantity ))
+                            |> Expect.equal [ ( Okonomiyaki.NoodleKindUdon, 2 ) ]
                 ]
             , describe "イカのみ・エビのみでは切り替わらない"
                 [ test "Soba + イカのみ → 変化なし" <|
                     \_ ->
                         { base = Okonomiyaki.baseSobaBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings = [ { menuItem = MenuData.toppingSquid, quantity = 1 } ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
@@ -475,7 +475,7 @@ suite =
                     \_ ->
                         { base = Okonomiyaki.baseSobaBase
                         , quantity = 1
-                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings = [ { menuItem = MenuData.toppingShrimp, quantity = 1 } ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange

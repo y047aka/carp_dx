@@ -3,7 +3,6 @@ module Menu exposing (MenuItem(..), MenuCategory(..), categoryName, categoryToSt
 
 type MenuCategory
     = Base
-    | Noodle
     | Topping
     | Grilled
     | Drink
@@ -11,16 +10,12 @@ type MenuCategory
 
 type MenuItem
     = StandardItem { id : String, name : String, price : Int, category : MenuCategory }
-    | NoodleItem { id : String, name : String, basePrice : Int, pricePerHalfBall : Int, category : MenuCategory }
 
 
 menuItemId : MenuItem -> String
 menuItemId item =
     case item of
         StandardItem r ->
-            r.id
-
-        NoodleItem r ->
             r.id
 
 
@@ -30,17 +25,11 @@ menuItemName item =
         StandardItem r ->
             r.name
 
-        NoodleItem r ->
-            r.name
-
 
 menuItemCategory : MenuItem -> MenuCategory
 menuItemCategory item =
     case item of
         StandardItem r ->
-            r.category
-
-        NoodleItem r ->
             r.category
 
 
@@ -49,9 +38,6 @@ categoryName category =
     case category of
         Base ->
             "お好み焼き"
-
-        Noodle ->
-            "麺"
 
         Topping ->
             "トッピング"
@@ -69,9 +55,6 @@ categoryToString category =
         Base ->
             "base"
 
-        Noodle ->
-            "noodle"
-
         Topping ->
             "topping"
 
@@ -88,6 +71,3 @@ menuItemPrice item quantity =
     case item of
         StandardItem r ->
             r.price * quantity
-
-        NoodleItem r ->
-            r.basePrice + r.pricePerHalfBall * quantity

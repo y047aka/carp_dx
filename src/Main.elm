@@ -6,7 +6,7 @@ import Html.Attributes exposing (checked, class, classList, disabled, type_)
 import Html.Events exposing (onClick)
 import Menu exposing (MenuCategory(..), MenuItem(..), menuItemCategory, menuItemId, menuItemName, menuItemPrice)
 import MenuData
-import Okonomiyaki exposing (Addition, BaseOrderItem)
+import Okonomiyaki exposing (Addition, BaseOrderItem, Noodle, NoodleAddition)
 import Order exposing (Order, OrderItemType(..), StandaloneOrderItem)
 
 
@@ -41,11 +41,12 @@ init =
 type Msg
     = SelectCategory MenuCategory
     | AddMenuItem MenuItem
+    | AddNoodle Noodle
     | CancelAddingBase
     | IncrementBaseQuantity Int
     | DecrementBaseQuantity Int
-    | IncrementNoodleQuantity Int MenuItem
-    | DecrementNoodleQuantity Int MenuItem
+    | IncrementNoodleQuantity Int Noodle
+    | DecrementNoodleQuantity Int Noodle
     | ToggleTopping Int MenuItem
     | IncrementStandaloneQuantity String
     | DecrementStandaloneQuantity String
@@ -78,9 +79,6 @@ update msg model =
                         , isAddingNewBase = True
                     }
 
-                Noodle ->
-                    { model | currentOrder = Order.addNoodleToLastBase menuItem model.currentOrder }
-
                 Topping ->
                     { model | currentOrder = Order.addToppingToLastBase menuItem model.currentOrder }
 
@@ -89,6 +87,9 @@ update msg model =
 
                 Drink ->
                     { model | currentOrder = Order.addStandaloneItem menuItem model.currentOrder }
+
+        AddNoodle noodle ->
+            { model | currentOrder = Order.addNoodleToLastBase noodle model.currentOrder }
 
         CancelAddingBase ->
             let
@@ -110,19 +111,19 @@ update msg model =
         DecrementBaseQuantity index ->
             { model | currentOrder = Order.decrementBaseQuantity index model.currentOrder }
 
-        IncrementNoodleQuantity index noodleItem ->
+        IncrementNoodleQuantity index noodle ->
             { model
                 | currentOrder =
                     model.currentOrder
-                        |> Order.incrementNoodleQuantity index noodleItem
-                        |> Order.normalizeBaseOnNoodleAdd index noodleItem
+                        |> Order.incrementNoodleQuantity index noodle
+                        |> Order.normalizeBaseOnNoodleAdd index noodle
             }
 
-        DecrementNoodleQuantity index noodleItem ->
+        DecrementNoodleQuantity index noodle ->
             { model
                 | currentOrder =
                     model.currentOrder
-                        |> Order.decrementNoodleQuantity index noodleItem
+                        |> Order.decrementNoodleQuantity index noodle
                         |> Order.normalizeBaseOnNoodleChange index
             }
 
@@ -134,11 +135,11 @@ update msg model =
                         |> Order.normalizeBaseOnToppingChange index
             }
 
-        IncrementStandaloneQuantity menuItemId ->
-            { model | currentOrder = Order.incrementStandaloneQuantity menuItemId model.currentOrder }
+        IncrementStandaloneQuantity itemId ->
+            { model | currentOrder = Order.incrementStandaloneQuantity itemId model.currentOrder }
 
-        DecrementStandaloneQuantity menuItemId ->
-            { model | currentOrder = Order.decrementStandaloneQuantity menuItemId model.currentOrder }
+        DecrementStandaloneQuantity itemId ->
+            { model | currentOrder = Order.decrementStandaloneQuantity itemId model.currentOrder }
 
         ShowCheckout ->
             { model | showCheckoutModal = True }
@@ -238,9 +239,6 @@ menuItemCard item =
 
                     else
                         "¥" ++ String.fromInt r.price
-
-                NoodleItem r ->
-                    "¥" ++ String.fromInt (r.basePrice + r.pricePerHalfBall) ++ "〜"
     in
     button
         [ class "btn btn-lg h-auto min-h-20 flex-col items-start justify-center p-4 normal-case"
@@ -322,6 +320,15 @@ orderItemView index item =
             standaloneOrderView standaloneItem
 
 
+noodlePrice : NoodleAddition -> Int
+noodlePrice noodleAddition =
+    let
+        n =
+            noodleAddition.noodle
+    in
+    n.basePrice + n.pricePerHalfBall * noodleAddition.quantity
+
+
 baseOrderView : Int -> BaseOrderItem -> Html Msg
 baseOrderView index baseItem =
     div [ class "mb-4 p-3 bg-base-200 rounded-lg" ]
@@ -363,9 +370,9 @@ baseOrderView index baseItem =
                 (List.concat
                     [ baseItem.noodles
                         |> List.map
-                            (\noodle ->
+                            (\n ->
                                 span [ class "px-2.5 py-1 bg-base-300 rounded-full text-xs font-medium" ]
-                                    [ text (menuItemName noodle.menuItem ++ " " ++ Okonomiyaki.noodleQuantityDisplay noodle.quantity ++ "玉 ¥" ++ String.fromInt (menuItemPrice noodle.menuItem noodle.quantity * baseItem.quantity)) ]
+                                    [ text (n.noodle.name ++ " " ++ Okonomiyaki.noodleQuantityDisplay n.quantity ++ "玉 ¥" ++ String.fromInt (noodlePrice n * baseItem.quantity)) ]
                             )
                     , baseItem.toppings
                         |> List.map
@@ -450,8 +457,7 @@ editBaseModal model =
                                 , div [ class "mb-6" ]
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "麺" ]
                                     , div [ class "grid grid-cols-2 gap-3" ]
-                                        (MenuData.allMenuItems
-                                            |> List.filter (\item -> menuItemCategory item == Noodle)
+                                        (Okonomiyaki.allNoodles
                                             |> List.map (noodleMenuItem index baseItem)
                                         )
                                     ]
@@ -484,9 +490,9 @@ editBaseModal model =
                                             (List.concat
                                                 [ baseItem.noodles
                                                     |> List.map
-                                                        (\noodle ->
+                                                        (\n ->
                                                             span [ class "px-2.5 py-1 bg-base-200 rounded-full text-xs font-medium" ]
-                                                                [ text (menuItemName noodle.menuItem ++ " (" ++ Okonomiyaki.noodleQuantityDisplay noodle.quantity ++ "玉)") ]
+                                                                [ text (n.noodle.name ++ " (" ++ Okonomiyaki.noodleQuantityDisplay n.quantity ++ "玉)") ]
                                                         )
                                                 , baseItem.toppings
                                                     |> List.map
@@ -531,30 +537,30 @@ editBaseModal model =
                         ]
 
 
-noodleMenuItem : Int -> BaseOrderItem -> MenuItem -> Html Msg
-noodleMenuItem baseIndex baseOrderItem item =
+noodleMenuItem : Int -> BaseOrderItem -> Noodle -> Html Msg
+noodleMenuItem baseIndex baseOrderItem noodle =
     let
         -- noodles リスト内の数量
         noodleQuantity =
             baseOrderItem.noodles
-                |> List.filter (\n -> menuItemId n.menuItem == menuItemId item)
+                |> List.filter (\n -> n.noodle.kind == noodle.kind)
                 |> List.head
                 |> Maybe.map .quantity
                 |> Maybe.withDefault 0
 
         -- ベースの込み麺として内包されているか
         isEmbeddedInBase =
-            Okonomiyaki.isDefaultNoodleOf item baseOrderItem.base
+            Okonomiyaki.isDefaultNoodleOf noodle baseOrderItem.base
 
         isSelected =
             noodleQuantity > 0 || isEmbeddedInBase
 
         priceText =
             if noodleQuantity > 0 then
-                "¥" ++ String.fromInt (menuItemPrice item noodleQuantity)
+                "¥" ++ String.fromInt (noodle.basePrice + noodle.pricePerHalfBall * noodleQuantity)
 
             else
-                "¥" ++ String.fromInt (menuItemPrice item 2)
+                "¥" ++ String.fromInt (noodle.basePrice + noodle.pricePerHalfBall * 2)
     in
     div
         [ class "flex items-center justify-between p-3 border border-base-300 rounded-lg"
@@ -562,7 +568,7 @@ noodleMenuItem baseIndex baseOrderItem item =
         ]
         [ -- 左側: 名前と価格
           div [ class "flex-1 text-left" ]
-            [ div [ class "text-base font-bold" ] [ text (menuItemName item) ]
+            [ div [ class "text-base font-bold" ] [ text noodle.name ]
             , div [ class "text-sm" ]
                 [ text priceText ]
             ]
@@ -571,7 +577,7 @@ noodleMenuItem baseIndex baseOrderItem item =
         , div [ class "flex items-center gap-2" ]
             [ button
                 [ class "btn btn-xs btn-circle btn-outline"
-                , onClick (DecrementNoodleQuantity baseIndex item)
+                , onClick (DecrementNoodleQuantity baseIndex noodle)
                 , disabled (not isSelected)
                 ]
                 [ text "−" ]
@@ -589,7 +595,7 @@ noodleMenuItem baseIndex baseOrderItem item =
                 ]
             , button
                 [ class "btn btn-xs btn-circle btn-primary"
-                , onClick (IncrementNoodleQuantity baseIndex item)
+                , onClick (IncrementNoodleQuantity baseIndex noodle)
                 ]
                 [ text "+" ]
             ]

@@ -1,7 +1,7 @@
 module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, normalizeBaseOnNoodleChange, normalizeBaseOnNoodleAdd, normalizeBaseOnToppingChange)
 
 import Menu exposing (MenuItem(..), menuItemId, menuItemPrice)
-import Okonomiyaki exposing (BaseOrderItem)
+import Okonomiyaki exposing (BaseOrderItem, Noodle)
 
 
 -- 独立した商品（焼き物、飲み物）
@@ -109,11 +109,11 @@ getLastBaseItemIndex order =
 
 
 -- 最後のお好み焼きに麺を追加（既存の麺を置き換え）
-addNoodleToLastBase : MenuItem -> Order -> Order
-addNoodleToLastBase noodleItem order =
+addNoodleToLastBase : Noodle -> Order -> Order
+addNoodleToLastBase noodle order =
     case getLastBaseItemIndex order of
         Just idx ->
-            addNoodleToBase idx noodleItem order
+            addNoodleToBase idx noodle order
 
         Nothing ->
             -- お好み焼きがない場合は何もしない
@@ -121,8 +121,8 @@ addNoodleToLastBase noodleItem order =
 
 
 -- 特定インデックスのお好み焼きに麺を追加（既存あれば数量+1、なければ新規追加）
-addNoodleToBase : Int -> MenuItem -> Order -> Order
-addNoodleToBase index noodleItem order =
+addNoodleToBase : Int -> Noodle -> Order -> Order
+addNoodleToBase index noodle order =
     { order
         | items =
             List.indexedMap
@@ -133,7 +133,7 @@ addNoodleToBase index noodleItem order =
                                 let
                                     existingNoodle =
                                         baseItem.noodles
-                                            |> List.filter (\n -> menuItemId n.menuItem == menuItemId noodleItem)
+                                            |> List.filter (\n -> n.noodle.kind == noodle.kind)
                                             |> List.head
                                 in
                                 case existingNoodle of
@@ -143,7 +143,7 @@ addNoodleToBase index noodleItem order =
                                                 | noodles =
                                                     List.map
                                                         (\n ->
-                                                            if menuItemId n.menuItem == menuItemId noodleItem then
+                                                            if n.noodle.kind == noodle.kind then
                                                                 { n | quantity = n.quantity + 1 }
 
                                                             else
@@ -155,7 +155,7 @@ addNoodleToBase index noodleItem order =
                                     Nothing ->
                                         BaseOrder
                                             { baseItem
-                                                | noodles = baseItem.noodles ++ [ { menuItem = noodleItem, quantity = 2 } ]
+                                                | noodles = baseItem.noodles ++ [ { noodle = noodle, quantity = 2 } ]
                                             }
 
                             _ ->
@@ -345,8 +345,8 @@ decrementBaseQuantity index order =
 
 
 -- 麺の数量を増やす（0.5玉単位、内部的に+1、新規追加にも対応）
-incrementNoodleQuantity : Int -> MenuItem -> Order -> Order
-incrementNoodleQuantity baseIndex noodleItem order =
+incrementNoodleQuantity : Int -> Noodle -> Order -> Order
+incrementNoodleQuantity baseIndex noodle order =
     { order
         | items =
             List.indexedMap
@@ -357,7 +357,7 @@ incrementNoodleQuantity baseIndex noodleItem order =
                                 let
                                     existingNoodle =
                                         baseItem.noodles
-                                            |> List.filter (\n -> menuItemId n.menuItem == menuItemId noodleItem)
+                                            |> List.filter (\n -> n.noodle.kind == noodle.kind)
                                             |> List.head
                                 in
                                 case existingNoodle of
@@ -368,7 +368,7 @@ incrementNoodleQuantity baseIndex noodleItem order =
                                                 | noodles =
                                                     List.map
                                                         (\n ->
-                                                            if menuItemId n.menuItem == menuItemId noodleItem then
+                                                            if n.noodle.kind == noodle.kind then
                                                                 { n | quantity = n.quantity + 1 }
 
                                                             else
@@ -381,7 +381,7 @@ incrementNoodleQuantity baseIndex noodleItem order =
                                         -- 新規麺を追加（quantity = 2で初期化 = 1玉）
                                         BaseOrder
                                             { baseItem
-                                                | noodles = baseItem.noodles ++ [ { menuItem = noodleItem, quantity = 2 } ]
+                                                | noodles = baseItem.noodles ++ [ { noodle = noodle, quantity = 2 } ]
                                             }
 
                             _ ->
@@ -395,8 +395,8 @@ incrementNoodleQuantity baseIndex noodleItem order =
 
 
 -- 麺の数量を減らす（0.5玉単位、内部的に-1。0になったら削除）
-decrementNoodleQuantity : Int -> MenuItem -> Order -> Order
-decrementNoodleQuantity baseIndex noodleItem order =
+decrementNoodleQuantity : Int -> Noodle -> Order -> Order
+decrementNoodleQuantity baseIndex noodle order =
     { order
         | items =
             List.indexedMap
@@ -409,7 +409,7 @@ decrementNoodleQuantity baseIndex noodleItem order =
                                         | noodles =
                                             List.map
                                                 (\n ->
-                                                    if menuItemId n.menuItem == menuItemId noodleItem then
+                                                    if n.noodle.kind == noodle.kind then
                                                         { n | quantity = max 0 (n.quantity - 1) }
 
                                                     else
@@ -498,9 +498,9 @@ calculateTotal order =
         |> List.sum
 
 
--- 麺の「＋」操作後に呼ぶ。baseYasai（defaultNoodle なし）の場合に追加した麺に応じてベースを切り替える
-normalizeBaseOnNoodleAdd : Int -> MenuItem -> Order -> Order
-normalizeBaseOnNoodleAdd index noodleItem order =
+-- 麺の「＋」操作後に呼ぶ。baseYasai（includedNoodleKind なし）の場合に追加した麺に応じてベースを切り替える
+normalizeBaseOnNoodleAdd : Int -> Noodle -> Order -> Order
+normalizeBaseOnNoodleAdd index noodle order =
     { order
         | items =
             List.indexedMap
@@ -508,7 +508,7 @@ normalizeBaseOnNoodleAdd index noodleItem order =
                     if i == index then
                         case item of
                             BaseOrder baseItem ->
-                                BaseOrder (Okonomiyaki.normalizeBaseOnNoodleAdd noodleItem baseItem)
+                                BaseOrder (Okonomiyaki.normalizeBaseOnNoodleAdd noodle baseItem)
 
                             _ ->
                                 item
@@ -520,7 +520,7 @@ normalizeBaseOnNoodleAdd index noodleItem order =
     }
 
 
--- 麺の「−」操作後に呼ぶ。defaultNoodle が0玉になった場合に baseItem を baseYasai に切り替える
+-- 麺の「−」操作後に呼ぶ。includedNoodleKind が0玉になった場合に baseItem を baseYasai に切り替える
 normalizeBaseOnNoodleChange : Int -> Order -> Order
 normalizeBaseOnNoodleChange index order =
     { order

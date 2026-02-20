@@ -15,10 +15,6 @@ suite =
             , testStandardMenuItem "そば入り" 1200 Okonomiyaki.baseSoba
             , testStandardMenuItem "うどん入り" 1200 Okonomiyaki.baseUdon
             ]
-        , describe "麺"
-            [ testNoodleMenuItem "そば" 100 100 Okonomiyaki.noodleSoba
-            , testNoodleMenuItem "うどん" 100 100 Okonomiyaki.noodleUdon
-            ]
         , describe "トッピング"
             [ testStandardMenuItem "イカ天" 200 toppingIkaten
             , testStandardMenuItem "もち" 200 toppingMochi
@@ -55,11 +51,11 @@ suite =
                     allMenuItems
                         |> List.all (\item -> menuItemPrice item 1 > 0)
                         |> Expect.equal True
-            , test "全20品目が登録されている" <|
+            , test "全18品目が登録されている" <|
                 \_ ->
                     allMenuItems
                         |> List.length
-                        |> Expect.equal 20
+                        |> Expect.equal 18
             ]
         ]
 
@@ -74,31 +70,4 @@ testStandardMenuItem expectedName expectedPrice item =
                 case item of
                     StandardItem r ->
                         Expect.equal expectedPrice r.price
-
-                    NoodleItem _ ->
-                        Expect.fail "Expected StandardItem"
-        ]
-
-
-testNoodleMenuItem : String -> Int -> Int -> MenuItem -> Test
-testNoodleMenuItem expectedName expectedBasePrice expectedPricePerHalfBall item =
-    describe expectedName
-        [ test "名前が正しい" <|
-            \_ -> Expect.equal expectedName (menuItemName item)
-        , test "基本料金が正しい" <|
-            \_ ->
-                case item of
-                    NoodleItem r ->
-                        Expect.equal expectedBasePrice r.basePrice
-
-                    StandardItem _ ->
-                        Expect.fail "Expected NoodleItem"
-        , test "0.5玉あたりの価格が正しい" <|
-            \_ ->
-                case item of
-                    NoodleItem r ->
-                        Expect.equal expectedPricePerHalfBall r.pricePerHalfBall
-
-                    StandardItem _ ->
-                        Expect.fail "Expected NoodleItem"
         ]
