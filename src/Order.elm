@@ -1,6 +1,6 @@
 module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, normalizeBaseOnNoodleChange, normalizeBaseOnNoodleAdd, normalizeBaseOnToppingChange)
 
-import Menu exposing (MenuItem(..), menuItemId, menuItemPrice)
+import Menu exposing (MenuItem)
 import Okonomiyaki exposing (BaseOrderItem, Noodle)
 
 
@@ -51,7 +51,7 @@ addStandaloneItem menuItem order =
                     (\( idx, item ) ->
                         case item of
                             StandaloneOrder standaloneItem ->
-                                if menuItemId standaloneItem.menuItem == menuItemId menuItem then
+                                if standaloneItem.menuItem.id == menuItem.id then
                                     Just idx
 
                                 else
@@ -192,7 +192,7 @@ addToppingToBase index toppingItem order =
                                 let
                                     existingTopping =
                                         baseItem.toppings
-                                            |> List.filter (\t -> menuItemId t.menuItem == menuItemId toppingItem)
+                                            |> List.filter (\t -> t.menuItem.id == toppingItem.id)
                                             |> List.head
                                 in
                                 case existingTopping of
@@ -203,7 +203,7 @@ addToppingToBase index toppingItem order =
                                                 | toppings =
                                                     List.map
                                                         (\t ->
-                                                            if menuItemId t.menuItem == menuItemId toppingItem then
+                                                            if t.menuItem.id == toppingItem.id then
                                                                 { t | quantity = t.quantity + 1 }
 
                                                             else
@@ -243,7 +243,7 @@ removeToppingFromBase index toppingId order =
                                     { baseItem
                                         | toppings =
                                             List.filter
-                                                (\t -> menuItemId t.menuItem /= toppingId)
+                                                (\t -> t.menuItem.id /= toppingId)
                                                 baseItem.toppings
                                     }
 
@@ -269,7 +269,7 @@ toggleTopping index toppingItem order =
                     (\item ->
                         case item of
                             BaseOrder baseItem ->
-                                if List.any (\t -> menuItemId t.menuItem == menuItemId toppingItem) baseItem.toppings then
+                                if List.any (\t -> t.menuItem.id == toppingItem.id) baseItem.toppings then
                                     Just True
 
                                 else
@@ -281,7 +281,7 @@ toggleTopping index toppingItem order =
     in
     case hasTopping of
         Just True ->
-            removeToppingFromBase index (menuItemId toppingItem) order
+            removeToppingFromBase index toppingItem.id order
 
         _ ->
             addToppingToBase index toppingItem order
@@ -438,7 +438,7 @@ incrementStandaloneQuantity targetId order =
                 (\item ->
                     case item of
                         StandaloneOrder standaloneItem ->
-                            if menuItemId standaloneItem.menuItem == targetId then
+                            if standaloneItem.menuItem.id == targetId then
                                 StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity + 1 }
 
                             else
@@ -460,7 +460,7 @@ decrementStandaloneQuantity targetId order =
                 (\item ->
                     case item of
                         StandaloneOrder standaloneItem ->
-                            if menuItemId standaloneItem.menuItem == targetId then
+                            if standaloneItem.menuItem.id == targetId then
                                 StandaloneOrder { standaloneItem | quantity = max 0 (standaloneItem.quantity - 1) }
 
                             else
@@ -493,7 +493,7 @@ calculateTotal order =
                         Okonomiyaki.calculateBaseItemTotal baseItem
 
                     StandaloneOrder standaloneItem ->
-                        menuItemPrice standaloneItem.menuItem standaloneItem.quantity
+                        standaloneItem.menuItem.price * standaloneItem.quantity
             )
         |> List.sum
 

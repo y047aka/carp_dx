@@ -1,7 +1,6 @@
 module OkonomiyakiTest exposing (suite)
 
 import Expect
-import Menu exposing (menuItemId)
 import MenuData
 import Okonomiyaki
 import Test exposing (..)
@@ -81,7 +80,7 @@ suite =
                     \_ ->
                         Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseZenbuIriBase
                             |> .toppings
-                            |> List.map (\t -> ( menuItemId t.menuItem, t.quantity ))
+                            |> List.map (\t -> ( t.menuItem.id, t.quantity ))
                             |> Expect.equal [ ( "topping-squid", 1 ), ( "topping-shrimp", 1 ) ]
                 ]
             , describe "共通の初期値"

@@ -48,7 +48,7 @@ module Okonomiyaki exposing
 
 -}
 
-import Menu exposing (MenuCategory(..), MenuItem(..), menuItemCategory, menuItemId, menuItemPrice)
+import Menu exposing (MenuCategory(..), MenuItem)
 
 
 -- 型定義
@@ -141,12 +141,11 @@ type alias BaseOrderItem =
 {-| 野菜入りお好み焼き（デフォルト麺なし、900円）。 -}
 baseYasai : MenuItem
 baseYasai =
-    StandardItem
-        { id = "base-yasai"
-        , name = "野菜入り"
-        , price = 900
-        , category = Base
-        }
+    { id = "base-yasai"
+    , name = "野菜入り"
+    , price = 900
+    , category = Base
+    }
 
 
 {-| そば入りお好み焼き（1200円）。
@@ -156,12 +155,11 @@ baseYasai =
 -}
 baseSoba : MenuItem
 baseSoba =
-    StandardItem
-        { id = "base-soba"
-        , name = "そば入り"
-        , price = 1200
-        , category = Base
-        }
+    { id = "base-soba"
+    , name = "そば入り"
+    , price = 1200
+    , category = Base
+    }
 
 
 {-| うどん入りお好み焼き（1200円）。
@@ -171,12 +169,11 @@ baseSoba =
 -}
 baseUdon : MenuItem
 baseUdon =
-    StandardItem
-        { id = "base-udon"
-        , name = "うどん入り"
-        , price = 1200
-        , category = Base
-        }
+    { id = "base-udon"
+    , name = "うどん入り"
+    , price = 1200
+    , category = Base
+    }
 
 
 {-| 全部入りお好み焼き（ベース600円）。
@@ -188,12 +185,11 @@ baseUdon =
 -}
 baseZenbuIri : MenuItem
 baseZenbuIri =
-    StandardItem
-        { id = "base-zenbu-iri"
-        , name = "全部入り"
-        , price = 600
-        , category = Base
-        }
+    { id = "base-zenbu-iri"
+    , name = "全部入り"
+    , price = 600
+    , category = Base
+    }
 
 
 -- マスタデータ：OkonomiyakiBase
@@ -311,7 +307,7 @@ isDefaultNoodleOf noodle base =
     base.includedNoodleKind == Just noodle.kind
 
 
-{-| `MenuItem`（`StandardItem` with `category = Base`）から `OkonomiyakiBase` へ変換する。
+{-| `MenuItem`（`category = Base`）から `OkonomiyakiBase` へ変換する。
 
 `MenuItem` 世界と `OkonomiyakiBase` 世界の境界変換関数。
 ID 文字列参照をこの関数1箇所に局所化する。
@@ -320,8 +316,8 @@ ID 文字列参照をこの関数1箇所に局所化する。
 -}
 menuItemToOkonomiyakiBase : MenuItem -> Maybe OkonomiyakiBase
 menuItemToOkonomiyakiBase menuItem =
-    if menuItemCategory menuItem == Base then
-        case menuItemId menuItem of
+    if menuItem.category == Base then
+        case menuItem.id of
             "base-yasai" ->
                 Just baseYasaiBase
 
@@ -347,12 +343,12 @@ menuItemToOkonomiyakiBase menuItem =
 -- 全部入りの初期トッピング（循環依存を避けるため Okonomiyaki.elm 内でローカル定義）
 zenbuIriSquid : MenuItem
 zenbuIriSquid =
-    StandardItem { id = "topping-squid", name = "イカ", price = 400, category = Topping }
+    { id = "topping-squid", name = "イカ", price = 400, category = Topping }
 
 
 zenbuIriShrimp : MenuItem
 zenbuIriShrimp =
-    StandardItem { id = "topping-shrimp", name = "エビ", price = 400, category = Topping }
+    { id = "topping-shrimp", name = "エビ", price = 400, category = Topping }
 
 
 {-| `OkonomiyakiBase` から初期 `BaseOrderItem` を生成する。
@@ -478,10 +474,10 @@ normalizeBaseOnToppingChange : BaseOrderItem -> BaseOrderItem
 normalizeBaseOnToppingChange baseItem =
     let
         hasSquid =
-            List.any (\t -> menuItemId t.menuItem == "topping-squid") baseItem.toppings
+            List.any (\t -> t.menuItem.id == "topping-squid") baseItem.toppings
 
         hasShrimp =
-            List.any (\t -> menuItemId t.menuItem == "topping-shrimp") baseItem.toppings
+            List.any (\t -> t.menuItem.id == "topping-shrimp") baseItem.toppings
 
         hasNoodleKind kind =
             List.any (\n -> n.noodle.kind == kind) baseItem.noodles
@@ -570,7 +566,7 @@ calculateBaseItemTotal baseItem =
 
         toppingsPrice =
             baseItem.toppings
-                |> List.map (\t -> menuItemPrice t.menuItem t.quantity)
+                |> List.map (\t -> t.menuItem.price * t.quantity)
                 |> List.sum
     in
     (basePrice + noodlePrice + toppingsPrice) * baseItem.quantity

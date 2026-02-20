@@ -4,7 +4,7 @@ import Browser
 import Html exposing (Html, button, div, h1, h2, h3, input, span, text)
 import Html.Attributes exposing (checked, class, classList, disabled, type_)
 import Html.Events exposing (onClick)
-import Menu exposing (MenuCategory(..), MenuItem(..), menuItemCategory, menuItemId, menuItemName, menuItemPrice)
+import Menu exposing (MenuCategory(..), MenuItem)
 import MenuData
 import Okonomiyaki exposing (Addition, BaseOrderItem, Noodle, NoodleAddition)
 import Order exposing (Order, OrderItemType(..), StandaloneOrderItem)
@@ -64,7 +64,7 @@ update msg model =
             { model | selectedCategory = category }
 
         AddMenuItem menuItem ->
-            case menuItemCategory menuItem of
+            case menuItem.category of
                 Base ->
                     let
                         newOrder =
@@ -188,7 +188,7 @@ view model =
         , div [ class "p-4" ]
             [ div [ class "grid grid-cols-2 gap-3" ]
                 (MenuData.allMenuItems
-                    |> List.filter (\item -> menuItemCategory item == model.selectedCategory)
+                    |> List.filter (\item -> item.category == model.selectedCategory)
                     |> List.map menuItemCard
                 )
             ]
@@ -227,24 +227,22 @@ menuItemCard : MenuItem -> Html Msg
 menuItemCard item =
     let
         priceText =
-            case item of
-                StandardItem r ->
-                    if menuItemCategory item == Base then
-                        case Okonomiyaki.menuItemToOkonomiyakiBase item of
-                            Just base ->
-                                "¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal (Okonomiyaki.initialBaseOrderItem base))
+            if item.category == Base then
+                case Okonomiyaki.menuItemToOkonomiyakiBase item of
+                    Just base ->
+                        "¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal (Okonomiyaki.initialBaseOrderItem base))
 
-                            Nothing ->
-                                "¥?"
+                    Nothing ->
+                        "¥?"
 
-                    else
-                        "¥" ++ String.fromInt r.price
+            else
+                "¥" ++ String.fromInt item.price
     in
     button
         [ class "btn btn-lg h-auto min-h-20 flex-col items-start justify-center p-4 normal-case"
         , onClick (AddMenuItem item)
         ]
-        [ div [ class "text-lg font-bold w-full text-left" ] [ text (menuItemName item) ]
+        [ div [ class "text-lg font-bold w-full text-left" ] [ text item.name ]
         , div [ class "text-xl text-primary w-full text-left" ] [ text priceText ]
         ]
 
@@ -378,7 +376,7 @@ baseOrderView index baseItem =
                         |> List.map
                             (\topping ->
                                 span [ class "px-2.5 py-1 bg-base-300 rounded-full text-xs font-medium" ]
-                                    [ text (menuItemName topping.menuItem ++ " ¥" ++ String.fromInt (menuItemPrice topping.menuItem topping.quantity * baseItem.quantity)) ]
+                                    [ text (topping.menuItem.name ++ " ¥" ++ String.fromInt (topping.menuItem.price * topping.quantity * baseItem.quantity)) ]
                             )
                     ]
                 )
@@ -398,27 +396,27 @@ standaloneOrderView : StandaloneOrderItem -> Html Msg
 standaloneOrderView item =
     div [ class "flex items-center justify-between py-2 border-b border-base-300" ]
         [ div [ class "flex-1" ]
-            [ div [ class "text-lg font-semibold" ] [ text (menuItemName item.menuItem) ]
+            [ div [ class "text-lg font-semibold" ] [ text item.menuItem.name ]
             , div [ class "text-sm text-base-content/70" ]
-                [ text ("¥" ++ String.fromInt (menuItemPrice item.menuItem 1) ++ " × " ++ String.fromInt item.quantity)
+                [ text ("¥" ++ String.fromInt item.menuItem.price ++ " × " ++ String.fromInt item.quantity)
                 ]
             ]
         , div [ class "flex items-center gap-2" ]
             [ button
                 [ class "btn btn-sm btn-circle btn-outline"
-                , onClick (DecrementStandaloneQuantity (menuItemId item.menuItem))
+                , onClick (DecrementStandaloneQuantity item.menuItem.id)
                 ]
                 [ text "−" ]
             , span [ class "text-xl font-bold w-8 text-center" ]
                 [ text (String.fromInt item.quantity) ]
             , button
                 [ class "btn btn-sm btn-circle btn-primary"
-                , onClick (IncrementStandaloneQuantity (menuItemId item.menuItem))
+                , onClick (IncrementStandaloneQuantity item.menuItem.id)
                 ]
                 [ text "+" ]
             ]
         , div [ class "text-lg font-bold text-right w-24" ]
-            [ text ("¥" ++ String.fromInt (menuItemPrice item.menuItem item.quantity))
+            [ text ("¥" ++ String.fromInt (item.menuItem.price * item.quantity))
             ]
         ]
 
@@ -467,7 +465,7 @@ editBaseModal model =
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "トッピング" ]
                                     , div [ class "grid grid-cols-2 gap-3" ]
                                         (MenuData.allMenuItems
-                                            |> List.filter (\item -> menuItemCategory item == Topping)
+                                            |> List.filter (\item -> item.category == Topping)
                                             |> List.map (toppingMenuItem index baseItem.toppings)
                                         )
                                     ]
@@ -498,7 +496,7 @@ editBaseModal model =
                                                     |> List.map
                                                         (\topping ->
                                                             span [ class "px-2.5 py-1 bg-base-200 rounded-full text-xs font-medium" ]
-                                                                [ text (menuItemName topping.menuItem) ]
+                                                                [ text topping.menuItem.name ]
                                                         )
                                                 ]
                                             )
@@ -607,7 +605,7 @@ toppingMenuItem baseIndex currentToppings item =
     let
         isSelected =
             currentToppings
-                |> List.any (\t -> menuItemId t.menuItem == menuItemId item)
+                |> List.any (\t -> t.menuItem.id == item.id)
     in
     div
         [ class "flex items-center justify-between p-3 border border-base-300 rounded-lg hover:bg-base-200 cursor-pointer"
@@ -615,9 +613,9 @@ toppingMenuItem baseIndex currentToppings item =
         , onClick (ToggleTopping baseIndex item)
         ]
         [ div [ class "flex-1" ]
-            [ div [ class "text-base font-bold" ] [ text (menuItemName item) ]
+            [ div [ class "text-base font-bold" ] [ text item.name ]
             , div [ class "text-sm text-base-content/70" ]
-                [ text ("¥" ++ String.fromInt (menuItemPrice item 1)) ]
+                [ text ("¥" ++ String.fromInt item.price) ]
             ]
         , input
             [ type_ "checkbox"

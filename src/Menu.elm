@@ -1,4 +1,4 @@
-module Menu exposing (MenuItem(..), MenuCategory(..), categoryName, categoryToString, menuItemId, menuItemName, menuItemCategory, menuItemPrice)
+module Menu exposing (MenuItem, MenuCategory(..), categoryName, categoryToString)
 
 
 type MenuCategory
@@ -8,29 +8,8 @@ type MenuCategory
     | Drink
 
 
-type MenuItem
-    = StandardItem { id : String, name : String, price : Int, category : MenuCategory }
-
-
-menuItemId : MenuItem -> String
-menuItemId item =
-    case item of
-        StandardItem r ->
-            r.id
-
-
-menuItemName : MenuItem -> String
-menuItemName item =
-    case item of
-        StandardItem r ->
-            r.name
-
-
-menuItemCategory : MenuItem -> MenuCategory
-menuItemCategory item =
-    case item of
-        StandardItem r ->
-            r.category
+type alias MenuItem =
+    { id : String, name : String, price : Int, category : MenuCategory }
 
 
 categoryName : MenuCategory -> String
@@ -63,11 +42,3 @@ categoryToString category =
 
         Drink ->
             "drink"
-
-
--- MenuItem の種類に応じた価格計算
-menuItemPrice : MenuItem -> Int -> Int
-menuItemPrice item quantity =
-    case item of
-        StandardItem r ->
-            r.price * quantity
