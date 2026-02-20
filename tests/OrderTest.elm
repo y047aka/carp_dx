@@ -47,7 +47,7 @@ suite =
                 \_ ->
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.baseYasai
-                        |> Order.addToppingToLastBase MenuData.toppingIkaten
+                        |> Order.addToppingToLastBase Okonomiyaki.toppingIkaten
                         |> Order.calculateTotal
                         |> Expect.equal 1100
             , test "複雑な注文の合計" <|
@@ -55,8 +55,8 @@ suite =
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.baseYasai
                         |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
-                        |> Order.addToppingToLastBase MenuData.toppingIkaten
-                        |> Order.addToppingToLastBase MenuData.toppingNegi
+                        |> Order.addToppingToLastBase Okonomiyaki.toppingIkaten
+                        |> Order.addToppingToLastBase Okonomiyaki.toppingNegi
                         |> Order.addStandaloneItem MenuData.grilledKaki
                         |> Order.addStandaloneItem MenuData.drinkBeer
                         |> Order.calculateTotal
@@ -285,7 +285,7 @@ suite =
                 \_ ->
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.baseSoba
-                        |> Order.addToppingToLastBase MenuData.toppingIkaten
+                        |> Order.addToppingToLastBase Okonomiyaki.toppingIkaten
                         -- 1200 + 200 = 1400
                         |> Order.calculateTotal
                         |> Expect.equal 1400

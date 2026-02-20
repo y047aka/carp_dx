@@ -1,7 +1,6 @@
 module OkonomiyakiTest exposing (suite)
 
 import Expect
-import MenuData
 import Okonomiyaki
 import Test exposing (..)
 
@@ -80,8 +79,8 @@ suite =
                     \_ ->
                         Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseZenbuIriBase
                             |> .toppings
-                            |> List.map (\t -> ( t.menuItem.id, t.quantity ))
-                            |> Expect.equal [ ( "topping-squid", 1 ), ( "topping-shrimp", 1 ) ]
+                            |> List.map (\t -> ( t.topping.kind, t.quantity ))
+                            |> Expect.equal [ ( Okonomiyaki.ToppingKindSquid, 1 ), ( Okonomiyaki.ToppingKindShrimp, 1 ) ]
                 ]
             , describe "共通の初期値"
                 [ test "quantity は 1 で初期化される" <|
@@ -238,12 +237,12 @@ suite =
             , describe "トッピングあり"
                 [ test "Yasai + イカ天×1: 900 + 200 = 1100円" <|
                     \_ ->
-                        { base = Okonomiyaki.baseYasaiBase, quantity = 1, noodles = [], toppings = [ { menuItem = MenuData.toppingIkaten, quantity = 1 } ] }
+                        { base = Okonomiyaki.baseYasaiBase, quantity = 1, noodles = [], toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 } ] }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 1100
                 , test "Yasai + イカ天×1 + ねぎかけ×2: 900 + 200 + (250×2) = 1600円" <|
                     \_ ->
-                        { base = Okonomiyaki.baseYasaiBase, quantity = 1, noodles = [], toppings = [ { menuItem = MenuData.toppingIkaten, quantity = 1 }, { menuItem = MenuData.toppingNegi, quantity = 2 } ] }
+                        { base = Okonomiyaki.baseYasaiBase, quantity = 1, noodles = [], toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 }, { topping = Okonomiyaki.toppingNegi, quantity = 2 } ] }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 1600
                 ]
@@ -253,7 +252,7 @@ suite =
                         { base = Okonomiyaki.baseYasaiBase
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ]
-                        , toppings = [ { menuItem = MenuData.toppingIkaten, quantity = 1 }, { menuItem = MenuData.toppingNegi, quantity = 1 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 }, { topping = Okonomiyaki.toppingNegi, quantity = 1 } ]
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 1550
@@ -262,7 +261,7 @@ suite =
                         { base = Okonomiyaki.baseYasaiBase
                         , quantity = 3
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ]
-                        , toppings = [ { menuItem = MenuData.toppingIkaten, quantity = 2 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 2 } ]
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 4500
@@ -274,8 +273,8 @@ suite =
                         , quantity = 1
                         , noodles = []
                         , toppings =
-                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
@@ -286,8 +285,8 @@ suite =
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings =
-                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
@@ -298,8 +297,8 @@ suite =
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
                         , toppings =
-                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
@@ -310,8 +309,8 @@ suite =
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ]
                         , toppings =
-                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
@@ -322,8 +321,8 @@ suite =
                         , quantity = 2
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings =
-                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
@@ -337,8 +336,8 @@ suite =
                     , quantity = 1
                     , noodles = []
                     , toppings =
-                        [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                        , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                        [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                        , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                         ]
                     }
                         |> Okonomiyaki.normalizeBaseOnNoodleChange
@@ -354,8 +353,8 @@ suite =
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings =
-                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
@@ -368,8 +367,8 @@ suite =
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
                         , toppings =
-                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
@@ -382,8 +381,8 @@ suite =
                         , quantity = 1
                         , noodles = []
                         , toppings =
-                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
@@ -397,7 +396,7 @@ suite =
                         { base = Okonomiyaki.baseZenbuIriBase
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
-                        , toppings = [ { menuItem = MenuData.toppingShrimp, quantity = 1 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingShrimp, quantity = 1 } ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
                             |> .base
@@ -408,7 +407,7 @@ suite =
                         { base = Okonomiyaki.baseZenbuIriBase
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
-                        , toppings = [ { menuItem = MenuData.toppingSquid, quantity = 1 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
                             |> .base
@@ -419,7 +418,7 @@ suite =
                         { base = Okonomiyaki.baseZenbuIriBase
                         , quantity = 1
                         , noodles = []
-                        , toppings = [ { menuItem = MenuData.toppingSquid, quantity = 1 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
                             |> .base
@@ -433,8 +432,8 @@ suite =
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
                         , toppings =
-                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
@@ -449,8 +448,8 @@ suite =
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
                         , toppings =
-                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
-                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
@@ -464,7 +463,7 @@ suite =
                         { base = Okonomiyaki.baseSobaBase
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
-                        , toppings = [ { menuItem = MenuData.toppingSquid, quantity = 1 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
                             |> .base
@@ -475,7 +474,7 @@ suite =
                         { base = Okonomiyaki.baseSobaBase
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
-                        , toppings = [ { menuItem = MenuData.toppingShrimp, quantity = 1 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingShrimp, quantity = 1 } ]
                         }
                             |> Okonomiyaki.normalizeBaseOnToppingChange
                             |> .base

@@ -16,13 +16,13 @@ suite =
             , testMenuItem "うどん入り" 1200 Okonomiyaki.baseUdon
             ]
         , describe "トッピング"
-            [ testMenuItem "イカ天" 200 toppingIkaten
-            , testMenuItem "もち" 200 toppingMochi
-            , testMenuItem "ねぎかけ" 250 toppingNegi
-            , testMenuItem "ニンニク" 250 toppingGarlic
-            , testMenuItem "チーズ" 300 toppingCheese
-            , testMenuItem "イカ" 400 toppingSquid
-            , testMenuItem "エビ" 400 toppingShrimp
+            [ testTopping "イカ天" 200 Okonomiyaki.toppingIkaten
+            , testTopping "もち" 200 Okonomiyaki.toppingMochi
+            , testTopping "ねぎかけ" 250 Okonomiyaki.toppingNegi
+            , testTopping "ニンニク" 250 Okonomiyaki.toppingGarlic
+            , testTopping "チーズ" 300 Okonomiyaki.toppingCheese
+            , testTopping "イカ" 400 Okonomiyaki.toppingSquid
+            , testTopping "エビ" 400 Okonomiyaki.toppingShrimp
             ]
         , describe "焼き物"
             [ testMenuItem "カキ焼き" 1500 grilledKaki
@@ -51,11 +51,11 @@ suite =
                     allMenuItems
                         |> List.all (\item -> item.price > 0)
                         |> Expect.equal True
-            , test "全18品目が登録されている" <|
+            , test "全11品目が登録されている（ベース4種・焼き物5種・飲み物2種）" <|
                 \_ ->
                     allMenuItems
                         |> List.length
-                        |> Expect.equal 18
+                        |> Expect.equal 11
             ]
         ]
 
@@ -67,4 +67,14 @@ testMenuItem expectedName expectedPrice item =
             \_ -> Expect.equal expectedName item.name
         , test "価格が正しい" <|
             \_ -> Expect.equal expectedPrice item.price
+        ]
+
+
+testTopping : String -> Int -> Okonomiyaki.Topping -> Test
+testTopping expectedName expectedPrice topping =
+    describe expectedName
+        [ test "名前が正しい" <|
+            \_ -> Expect.equal expectedName topping.name
+        , test "価格が正しい" <|
+            \_ -> Expect.equal expectedPrice topping.price
         ]

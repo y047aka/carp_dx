@@ -1,11 +1,17 @@
 module Okonomiyaki exposing
-    ( Addition
+    ( BaseEntry
     , BaseOrderItem
     , Noodle
     , NoodleAddition
     , NoodleKind(..)
     , OkonomiyakiBase
     , OkonomiyakiBaseKind(..)
+    , Topping
+    , ToppingAddition
+    , ToppingKind(..)
+    , allBases
+    , allNoodles
+    , allToppings
     , baseYasai
     , baseSoba
     , baseUdon
@@ -16,7 +22,13 @@ module Okonomiyaki exposing
     , baseZenbuIriBase
     , noodleSoba
     , noodleUdon
-    , allNoodles
+    , toppingIkaten
+    , toppingMochi
+    , toppingNegi
+    , toppingGarlic
+    , toppingCheese
+    , toppingSquid
+    , toppingShrimp
     , noodleQuantityDisplay
     , isDefaultNoodleOf
     , menuItemToOkonomiyakiBase
@@ -60,6 +72,17 @@ type NoodleKind
     | NoodleKindUdon
 
 
+{-| トッピングの種類。トッピングの同一性識別に使用する。 -}
+type ToppingKind
+    = ToppingKindIkaten
+    | ToppingKindMochi
+    | ToppingKindNegi
+    | ToppingKindGarlic
+    | ToppingKindCheese
+    | ToppingKindSquid
+    | ToppingKindShrimp
+
+
 {-| お好み焼きベースの種類。IDハードコードの代替として使用する。 -}
 type OkonomiyakiBaseKind
     = Yasai
@@ -83,6 +106,27 @@ type alias OkonomiyakiBase =
     }
 
 
+{-| お好み焼きに追加できるトッピングのドメイン情報。
+
+  - `kind` はトッピングの種類（同一性の識別に使用）
+  - `name` は表示名
+  - `price` は1個あたりの料金
+
+-}
+type alias Topping =
+    { kind : ToppingKind
+    , name : String
+    , price : Int
+    }
+
+
+{-| `MenuItem` と `OkonomiyakiBase` のペア。`allBases` リストの要素。 -}
+type alias BaseEntry =
+    { menuItem : MenuItem
+    , base : OkonomiyakiBase
+    }
+
+
 {-| 麺のドメイン情報。`MenuItem` から独立したお好み焼きドメイン専用の型。
 
   - `kind` は麺の種類（同一性の識別に使用）
@@ -103,8 +147,8 @@ type alias Noodle =
 `quantity` はトッピングの個数単位。
 
 -}
-type alias Addition =
-    { menuItem : MenuItem
+type alias ToppingAddition =
+    { topping : Topping
     , quantity : Int
     }
 
@@ -131,7 +175,7 @@ type alias BaseOrderItem =
     { base : OkonomiyakiBase
     , quantity : Int
     , noodles : List NoodleAddition
-    , toppings : List Addition
+    , toppings : List ToppingAddition
     }
 
 
@@ -235,6 +279,67 @@ baseZenbuIriBase =
     }
 
 
+{-| 全ベースエントリの一覧。`MenuData.allMenuItems` のベース部分と `menuItemToOkonomiyakiBase` の両方に使用する。 -}
+allBases : List BaseEntry
+allBases =
+    [ { menuItem = baseYasai,    base = baseYasaiBase    }
+    , { menuItem = baseSoba,     base = baseSobaBase     }
+    , { menuItem = baseUdon,     base = baseUdonBase     }
+    , { menuItem = baseZenbuIri, base = baseZenbuIriBase }
+    ]
+
+
+-- マスタデータ：トッピング
+
+
+toppingIkaten : Topping
+toppingIkaten =
+    { kind = ToppingKindIkaten, name = "イカ天", price = 200 }
+
+
+toppingMochi : Topping
+toppingMochi =
+    { kind = ToppingKindMochi, name = "もち", price = 200 }
+
+
+toppingNegi : Topping
+toppingNegi =
+    { kind = ToppingKindNegi, name = "ねぎかけ", price = 250 }
+
+
+toppingGarlic : Topping
+toppingGarlic =
+    { kind = ToppingKindGarlic, name = "ニンニク", price = 250 }
+
+
+toppingCheese : Topping
+toppingCheese =
+    { kind = ToppingKindCheese, name = "チーズ", price = 300 }
+
+
+toppingSquid : Topping
+toppingSquid =
+    { kind = ToppingKindSquid, name = "イカ", price = 400 }
+
+
+toppingShrimp : Topping
+toppingShrimp =
+    { kind = ToppingKindShrimp, name = "エビ", price = 400 }
+
+
+{-| 全トッピング一覧。UI のトッピング選択画面に使用する。 -}
+allToppings : List Topping
+allToppings =
+    [ toppingIkaten
+    , toppingMochi
+    , toppingNegi
+    , toppingGarlic
+    , toppingCheese
+    , toppingSquid
+    , toppingShrimp
+    ]
+
+
 -- マスタデータ：麺
 
 
@@ -307,48 +412,21 @@ isDefaultNoodleOf noodle base =
     base.includedNoodleKind == Just noodle.kind
 
 
-{-| `MenuItem`（`category = Base`）から `OkonomiyakiBase` へ変換する。
+{-| `MenuItem` から `OkonomiyakiBase` へ変換する。
 
-`MenuItem` 世界と `OkonomiyakiBase` 世界の境界変換関数。
-ID 文字列参照をこの関数1箇所に局所化する。
-`category = Base` 以外は `Nothing` を返す。
+`allBases` リストを検索し、`id` が一致するエントリの `base` を返す。
+`allBases` に存在しない `MenuItem` は `Nothing` を返す。
 
 -}
 menuItemToOkonomiyakiBase : MenuItem -> Maybe OkonomiyakiBase
 menuItemToOkonomiyakiBase menuItem =
-    if menuItem.category == Base then
-        case menuItem.id of
-            "base-yasai" ->
-                Just baseYasaiBase
-
-            "base-soba" ->
-                Just baseSobaBase
-
-            "base-udon" ->
-                Just baseUdonBase
-
-            "base-zenbu-iri" ->
-                Just baseZenbuIriBase
-
-            _ ->
-                Nothing
-
-    else
-        Nothing
+    allBases
+        |> List.filter (\e -> e.menuItem.id == menuItem.id)
+        |> List.head
+        |> Maybe.map .base
 
 
 -- 構築・正規化・計算
-
-
--- 全部入りの初期トッピング（循環依存を避けるため Okonomiyaki.elm 内でローカル定義）
-zenbuIriSquid : MenuItem
-zenbuIriSquid =
-    { id = "topping-squid", name = "イカ", price = 400, category = Topping }
-
-
-zenbuIriShrimp : MenuItem
-zenbuIriShrimp =
-    { id = "topping-shrimp", name = "エビ", price = 400, category = Topping }
 
 
 {-| `OkonomiyakiBase` から初期 `BaseOrderItem` を生成する。
@@ -380,8 +458,8 @@ initialBaseOrderItem base =
         initialToppings =
             case base.kind of
                 ZenbuIri ->
-                    [ { menuItem = zenbuIriSquid, quantity = 1 }
-                    , { menuItem = zenbuIriShrimp, quantity = 1 }
+                    [ { topping = toppingSquid, quantity = 1 }
+                    , { topping = toppingShrimp, quantity = 1 }
                     ]
 
                 _ ->
@@ -474,10 +552,10 @@ normalizeBaseOnToppingChange : BaseOrderItem -> BaseOrderItem
 normalizeBaseOnToppingChange baseItem =
     let
         hasSquid =
-            List.any (\t -> t.menuItem.id == "topping-squid") baseItem.toppings
+            List.any (\t -> t.topping.kind == ToppingKindSquid) baseItem.toppings
 
         hasShrimp =
-            List.any (\t -> t.menuItem.id == "topping-shrimp") baseItem.toppings
+            List.any (\t -> t.topping.kind == ToppingKindShrimp) baseItem.toppings
 
         hasNoodleKind kind =
             List.any (\n -> n.noodle.kind == kind) baseItem.noodles
@@ -566,7 +644,7 @@ calculateBaseItemTotal baseItem =
 
         toppingsPrice =
             baseItem.toppings
-                |> List.map (\t -> t.menuItem.price * t.quantity)
+                |> List.map (\t -> t.topping.price * t.quantity)
                 |> List.sum
     in
     (basePrice + noodlePrice + toppingsPrice) * baseItem.quantity

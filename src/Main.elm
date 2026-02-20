@@ -4,9 +4,9 @@ import Browser
 import Html exposing (Html, button, div, h1, h2, h3, input, span, text)
 import Html.Attributes exposing (checked, class, classList, disabled, type_)
 import Html.Events exposing (onClick)
-import Menu exposing (MenuCategory(..), MenuItem)
+import Menu exposing (MenuCategory, MenuItem)
 import MenuData
-import Okonomiyaki exposing (Addition, BaseOrderItem, Noodle, NoodleAddition)
+import Okonomiyaki exposing (BaseOrderItem, Noodle, NoodleAddition, Topping, ToppingAddition)
 import Order exposing (Order, OrderItemType(..), StandaloneOrderItem)
 
 
@@ -31,7 +31,7 @@ type alias Model =
 init : Model
 init =
     { currentOrder = Order.emptyOrder
-    , selectedCategory = Base
+    , selectedCategory = Menu.Base
     , showCheckoutModal = False
     , editingBaseIndex = Nothing
     , isAddingNewBase = False
@@ -47,7 +47,7 @@ type Msg
     | DecrementBaseQuantity Int
     | IncrementNoodleQuantity Int Noodle
     | DecrementNoodleQuantity Int Noodle
-    | ToggleTopping Int MenuItem
+    | ToggleTopping Int Topping
     | IncrementStandaloneQuantity String
     | DecrementStandaloneQuantity String
     | ShowCheckout
@@ -65,7 +65,7 @@ update msg model =
 
         AddMenuItem menuItem ->
             case menuItem.category of
-                Base ->
+                Menu.Base ->
                     let
                         newOrder =
                             Order.addBaseItem menuItem model.currentOrder
@@ -79,13 +79,13 @@ update msg model =
                         , isAddingNewBase = True
                     }
 
-                Topping ->
-                    { model | currentOrder = Order.addToppingToLastBase menuItem model.currentOrder }
+                Menu.Topping ->
+                    model
 
-                Grilled ->
+                Menu.Grilled ->
                     { model | currentOrder = Order.addStandaloneItem menuItem model.currentOrder }
 
-                Drink ->
+                Menu.Drink ->
                     { model | currentOrder = Order.addStandaloneItem menuItem model.currentOrder }
 
         AddNoodle noodle ->
@@ -179,9 +179,9 @@ view model =
 
         -- カテゴリータブ
         , div [ class "tabs tabs-boxed bg-base-100 sticky top-16 z-10 p-2 shadow-md" ]
-            [ categoryTab Base model.selectedCategory
-            , categoryTab Grilled model.selectedCategory
-            , categoryTab Drink model.selectedCategory
+            [ categoryTab Menu.Base model.selectedCategory
+            , categoryTab Menu.Grilled model.selectedCategory
+            , categoryTab Menu.Drink model.selectedCategory
             ]
 
         -- メニューグリッド
@@ -227,7 +227,7 @@ menuItemCard : MenuItem -> Html Msg
 menuItemCard item =
     let
         priceText =
-            if item.category == Base then
+            if item.category == Menu.Base then
                 case Okonomiyaki.menuItemToOkonomiyakiBase item of
                     Just base ->
                         "¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal (Okonomiyaki.initialBaseOrderItem base))
@@ -376,7 +376,7 @@ baseOrderView index baseItem =
                         |> List.map
                             (\topping ->
                                 span [ class "px-2.5 py-1 bg-base-300 rounded-full text-xs font-medium" ]
-                                    [ text (topping.menuItem.name ++ " ¥" ++ String.fromInt (topping.menuItem.price * topping.quantity * baseItem.quantity)) ]
+                                    [ text (topping.topping.name ++ " ¥" ++ String.fromInt (topping.topping.price * topping.quantity * baseItem.quantity)) ]
                             )
                     ]
                 )
@@ -464,8 +464,7 @@ editBaseModal model =
                                 , div [ class "mb-6" ]
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "トッピング" ]
                                     , div [ class "grid grid-cols-2 gap-3" ]
-                                        (MenuData.allMenuItems
-                                            |> List.filter (\item -> item.category == Topping)
+                                        (Okonomiyaki.allToppings
                                             |> List.map (toppingMenuItem index baseItem.toppings)
                                         )
                                     ]
@@ -496,7 +495,7 @@ editBaseModal model =
                                                     |> List.map
                                                         (\topping ->
                                                             span [ class "px-2.5 py-1 bg-base-200 rounded-full text-xs font-medium" ]
-                                                                [ text topping.menuItem.name ]
+                                                                [ text topping.topping.name ]
                                                         )
                                                 ]
                                             )
@@ -600,12 +599,12 @@ noodleMenuItem baseIndex baseOrderItem noodle =
         ]
 
 
-toppingMenuItem : Int -> List Addition -> MenuItem -> Html Msg
+toppingMenuItem : Int -> List ToppingAddition -> Topping -> Html Msg
 toppingMenuItem baseIndex currentToppings item =
     let
         isSelected =
             currentToppings
-                |> List.any (\t -> t.menuItem.id == item.id)
+                |> List.any (\t -> t.topping.kind == item.kind)
     in
     div
         [ class "flex items-center justify-between p-3 border border-base-300 rounded-lg hover:bg-base-200 cursor-pointer"

@@ -1,12 +1,5 @@
 module MenuData exposing
     ( allMenuItems
-    , toppingIkaten
-    , toppingMochi
-    , toppingNegi
-    , toppingGarlic
-    , toppingCheese
-    , toppingSquid
-    , toppingShrimp
     , grilledKaki
     , grilledHotate
     , grilledIka
@@ -18,73 +11,6 @@ module MenuData exposing
 
 import Menu exposing (MenuCategory(..), MenuItem)
 import Okonomiyaki
-
-
-
--- トッピング
-
-
-toppingIkaten : MenuItem
-toppingIkaten =
-    { id = "topping-ikaten"
-    , name = "イカ天"
-    , price = 200
-    , category = Topping
-    }
-
-
-toppingMochi : MenuItem
-toppingMochi =
-    { id = "topping-mochi"
-    , name = "もち"
-    , price = 200
-    , category = Topping
-    }
-
-
-toppingNegi : MenuItem
-toppingNegi =
-    { id = "topping-negi"
-    , name = "ねぎかけ"
-    , price = 250
-    , category = Topping
-    }
-
-
-toppingGarlic : MenuItem
-toppingGarlic =
-    { id = "topping-garlic"
-    , name = "ニンニク"
-    , price = 250
-    , category = Topping
-    }
-
-
-toppingCheese : MenuItem
-toppingCheese =
-    { id = "topping-cheese"
-    , name = "チーズ"
-    , price = 300
-    , category = Topping
-    }
-
-
-toppingSquid : MenuItem
-toppingSquid =
-    { id = "topping-squid"
-    , name = "イカ"
-    , price = 400
-    , category = Topping
-    }
-
-
-toppingShrimp : MenuItem
-toppingShrimp =
-    { id = "topping-shrimp"
-    , name = "エビ"
-    , price = 400
-    , category = Topping
-    }
 
 
 
@@ -164,29 +90,16 @@ drinkSoft =
 
 allMenuItems : List MenuItem
 allMenuItems =
-    [ -- お好み焼き
-      Okonomiyaki.baseYasai
-    , Okonomiyaki.baseSoba
-    , Okonomiyaki.baseUdon
-    , Okonomiyaki.baseZenbuIri
+    -- お好み焼き
+    (Okonomiyaki.allBases |> List.map .menuItem)
+        ++ [ -- 焼き物
+             grilledKaki
+           , grilledHotate
+           , grilledIka
+           , grilledNegiYaki
+           , grilledTonpei
 
-    -- トッピング
-    , toppingIkaten
-    , toppingMochi
-    , toppingNegi
-    , toppingGarlic
-    , toppingCheese
-    , toppingSquid
-    , toppingShrimp
-
-    -- 焼き物
-    , grilledKaki
-    , grilledHotate
-    , grilledIka
-    , grilledNegiYaki
-    , grilledTonpei
-
-    -- 飲み物
-    , drinkBeer
-    , drinkSoft
-    ]
+           -- 飲み物
+           , drinkBeer
+           , drinkSoft
+           ]

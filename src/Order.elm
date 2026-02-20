@@ -1,7 +1,7 @@
 module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, normalizeBaseOnNoodleChange, normalizeBaseOnNoodleAdd, normalizeBaseOnToppingChange)
 
 import Menu exposing (MenuItem)
-import Okonomiyaki exposing (BaseOrderItem, Noodle)
+import Okonomiyaki exposing (BaseOrderItem, Noodle, Topping, ToppingKind)
 
 
 -- 独立した商品（焼き物、飲み物）
@@ -169,7 +169,7 @@ addNoodleToBase index noodle order =
 
 
 -- 最後のお好み焼きにトッピングを追加
-addToppingToLastBase : MenuItem -> Order -> Order
+addToppingToLastBase : Topping -> Order -> Order
 addToppingToLastBase toppingItem order =
     case getLastBaseItemIndex order of
         Just idx ->
@@ -180,7 +180,7 @@ addToppingToLastBase toppingItem order =
 
 
 -- 特定インデックスのお好み焼きにトッピングを追加
-addToppingToBase : Int -> MenuItem -> Order -> Order
+addToppingToBase : Int -> Topping -> Order -> Order
 addToppingToBase index toppingItem order =
     { order
         | items =
@@ -192,7 +192,7 @@ addToppingToBase index toppingItem order =
                                 let
                                     existingTopping =
                                         baseItem.toppings
-                                            |> List.filter (\t -> t.menuItem.id == toppingItem.id)
+                                            |> List.filter (\t -> t.topping.kind == toppingItem.kind)
                                             |> List.head
                                 in
                                 case existingTopping of
@@ -203,7 +203,7 @@ addToppingToBase index toppingItem order =
                                                 | toppings =
                                                     List.map
                                                         (\t ->
-                                                            if t.menuItem.id == toppingItem.id then
+                                                            if t.topping.kind == toppingItem.kind then
                                                                 { t | quantity = t.quantity + 1 }
 
                                                             else
@@ -216,7 +216,7 @@ addToppingToBase index toppingItem order =
                                         -- 新しいトッピングを追加
                                         BaseOrder
                                             { baseItem
-                                                | toppings = baseItem.toppings ++ [ { menuItem = toppingItem, quantity = 1 } ]
+                                                | toppings = baseItem.toppings ++ [ { topping = toppingItem, quantity = 1 } ]
                                             }
 
                             _ ->
@@ -230,8 +230,8 @@ addToppingToBase index toppingItem order =
 
 
 -- 特定インデックスのお好み焼きからトッピングを削除
-removeToppingFromBase : Int -> String -> Order -> Order
-removeToppingFromBase index toppingId order =
+removeToppingFromBase : Int -> ToppingKind -> Order -> Order
+removeToppingFromBase index toppingKind order =
     { order
         | items =
             List.indexedMap
@@ -243,7 +243,7 @@ removeToppingFromBase index toppingId order =
                                     { baseItem
                                         | toppings =
                                             List.filter
-                                                (\t -> t.menuItem.id /= toppingId)
+                                                (\t -> t.topping.kind /= toppingKind)
                                                 baseItem.toppings
                                     }
 
@@ -258,7 +258,7 @@ removeToppingFromBase index toppingId order =
 
 
 -- トッピングのトグル（未選択なら追加、選択済みなら削除）
-toggleTopping : Int -> MenuItem -> Order -> Order
+toggleTopping : Int -> Topping -> Order -> Order
 toggleTopping index toppingItem order =
     let
         hasTopping =
@@ -269,7 +269,7 @@ toggleTopping index toppingItem order =
                     (\item ->
                         case item of
                             BaseOrder baseItem ->
-                                if List.any (\t -> t.menuItem.id == toppingItem.id) baseItem.toppings then
+                                if List.any (\t -> t.topping.kind == toppingItem.kind) baseItem.toppings then
                                     Just True
 
                                 else
@@ -281,7 +281,7 @@ toggleTopping index toppingItem order =
     in
     case hasTopping of
         Just True ->
-            removeToppingFromBase index toppingItem.id order
+            removeToppingFromBase index toppingItem.kind order
 
         _ ->
             addToppingToBase index toppingItem order
