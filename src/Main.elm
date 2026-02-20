@@ -231,13 +231,12 @@ menuItemCard item =
                     "¥" ++ String.fromInt r.price
 
                 OkonomiyakiItem _ ->
-                    -- TODO: OkonomiyakiItem の price フィールドは内部計算用であり表示用ではない。
-                    -- baseZenbuIri では price=600（ベースのみ）だが、表示すべき金額は
-                    -- 初期状態（そば1玉＋イカ＋エビ）の合計 1700 円である。
-                    -- 暫定的に initialBaseOrderItem + calculateBaseItemTotal で初期金額を求めている。
-                    -- 根本的な解決策としては MenuItem 型に表示用 price を分離するか、
-                    -- OkonomiyakiItem の price を「初期状態の合計金額」として再定義することを検討する。
-                    "¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal (Okonomiyaki.initialBaseOrderItem item))
+                    case Okonomiyaki.menuItemToOkonomiyakiBase item of
+                        Just base ->
+                            "¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal (Okonomiyaki.initialBaseOrderItem base))
+
+                        Nothing ->
+                            "¥?"
 
                 NoodleItem r ->
                     "¥" ++ String.fromInt (r.basePrice + r.pricePerHalfBall) ++ "〜"
@@ -328,9 +327,9 @@ baseOrderView index baseItem =
         [ -- お好み焼き本体
           div [ class "flex flex-wrap items-center justify-between gap-2 mb-2" ]
             [ div [ class "flex-1 min-w-[120px]" ]
-                [ div [ class "text-lg font-bold" ] [ text (menuItemName baseItem.baseItem) ]
+                [ div [ class "text-lg font-bold" ] [ text baseItem.base.name ]
                 , div [ class "text-sm text-base-content/70" ]
-                    [ text ("¥" ++ String.fromInt (menuItemPrice baseItem.baseItem 1) ++ " × " ++ String.fromInt baseItem.quantity)
+                    [ text ("¥" ++ String.fromInt baseItem.base.basePrice ++ " × " ++ String.fromInt baseItem.quantity)
                     ]
                 ]
             , button
@@ -431,10 +430,10 @@ editBaseModal model =
                     let
                         modalTitle =
                             if model.isAddingNewBase then
-                                "「" ++ menuItemName baseItem.baseItem ++ "」をカスタマイズ"
+                                "「" ++ baseItem.base.name ++ "」をカスタマイズ"
 
                             else
-                                "「" ++ menuItemName baseItem.baseItem ++ "」を編集"
+                                "「" ++ baseItem.base.name ++ "」を編集"
                     in
                     div [ class "modal modal-open" ]
                         [ div [ class "modal-box max-w-2xl max-h-[90vh] flex flex-col p-0" ]
@@ -473,7 +472,7 @@ editBaseModal model =
                                   div [ class "bg-base-100 rounded-xl p-4 border border-base-300 mb-3" ]
                                     [ -- ベース
                                       div [ class "font-bold mb-3" ]
-                                        [ text (menuItemName baseItem.baseItem) ]
+                                        [ text baseItem.base.name ]
 
                                     -- 麺・トッピング（badge表示）
                                     , if List.isEmpty baseItem.noodles && List.isEmpty baseItem.toppings then
@@ -542,9 +541,9 @@ noodleMenuItem baseIndex baseOrderItem item =
                 |> Maybe.map .quantity
                 |> Maybe.withDefault 0
 
-        -- OkonomiyakiItem の defaultNoodle として麺が内包されているか
+        -- ベースの込み麺として内包されているか
         isEmbeddedInBase =
-            Okonomiyaki.isDefaultNoodleOf item baseOrderItem.baseItem
+            Okonomiyaki.isDefaultNoodleOf item baseOrderItem.base
 
         isSelected =
             noodleQuantity > 0 || isEmbeddedInBase

@@ -32,7 +32,12 @@ emptyOrder =
 -- 新しいお好み焼きを追加
 addBaseItem : MenuItem -> Order -> Order
 addBaseItem menuItem order =
-    { order | items = order.items ++ [ BaseOrder (Okonomiyaki.initialBaseOrderItem menuItem) ] }
+    case Okonomiyaki.menuItemToOkonomiyakiBase menuItem of
+        Just base ->
+            { order | items = order.items ++ [ BaseOrder (Okonomiyaki.initialBaseOrderItem base) ] }
+
+        Nothing ->
+            order
 
 
 -- 独立商品（焼き物・飲み物）を追加または数量を増やす
