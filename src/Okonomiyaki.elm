@@ -4,6 +4,7 @@ module Okonomiyaki exposing
     , baseYasai
     , baseSoba
     , baseUdon
+    , baseZenbuIri
     , okonomiyakiBases
     , noodleSoba
     , noodleUdon
@@ -14,6 +15,7 @@ module Okonomiyaki exposing
     , initialBaseOrderItem
     , normalizeBaseOnNoodleAdd
     , normalizeBaseOnNoodleChange
+    , normalizeBaseOnToppingChange
     , calculateBaseItemTotal
     )
 
@@ -76,6 +78,7 @@ baseYasai =
         , name = "野菜入り"
         , price = 900
         , defaultNoodle = Nothing
+        , defaultToppings = []
         , category = Base
         }
 
@@ -92,6 +95,7 @@ baseSoba =
         , name = "そば入り"
         , price = 1200
         , defaultNoodle = Just noodleSoba
+        , defaultToppings = []
         , category = Base
         }
 
@@ -108,6 +112,29 @@ baseUdon =
         , name = "うどん入り"
         , price = 1200
         , defaultNoodle = Just noodleUdon
+        , defaultToppings = []
+        , category = Base
+        }
+
+
+{-| 全部入りお好み焼き（defaultNoodle: なし、defaultToppings: イカ・エビ、ベース600円）。
+
+麺の種類を選ばず、イカ・エビのトッピング込みで麺1玉時に1700円になる。
+価格計算: basePrice(600) + noodlePrice(100 + 100×qty) + toppingsPrice(800)
+例: そばまたはうどん1玉(qty=2): 600 + (100 + 100×2) + 800 = 1700円
+
+-}
+baseZenbuIri : MenuItem
+baseZenbuIri =
+    OkonomiyakiItem
+        { id = "base-zenbu-iri"
+        , name = "全部入り"
+        , price = 600
+        , defaultNoodle = Nothing
+        , defaultToppings =
+            [ StandardItem { id = "topping-squid", name = "イカ", price = 400, category = Topping }
+            , StandardItem { id = "topping-shrimp", name = "エビ", price = 400, category = Topping }
+            ]
         , category = Base
         }
 
@@ -115,7 +142,7 @@ baseUdon =
 {-| 全ベース一覧。UI のメニュー表示や `baseForNoodle` の検索に使用する。 -}
 okonomiyakiBases : List MenuItem
 okonomiyakiBases =
-    [ baseYasai, baseSoba, baseUdon ]
+    [ baseYasai, baseSoba, baseUdon, baseZenbuIri ]
 
 
 -- マスタデータ：麺
@@ -234,6 +261,7 @@ isDefaultNoodleOf noodle base =
 
 `defaultNoodle` を持つベースの場合、`noodles` に1玉（`quantity = 2`）をセットする。
 `defaultNoodle` を持たない `baseYasai` の場合、`noodles` は空になる。
+`defaultToppings` を持つベース（`baseZenbuIri` など）の場合、`toppings` に各トッピングを quantity=1 でセットする。
 
 -}
 initialBaseOrderItem : MenuItem -> BaseOrderItem
@@ -247,7 +275,19 @@ initialBaseOrderItem menuItem =
                             [ { menuItem = noodleItem, quantity = 2 } ]
 
                         Nothing ->
-                            []
+                            if menuItemId menuItem == "base-zenbu-iri" then
+                                [ { menuItem = noodleSoba, quantity = 2 } ]
+
+                            else
+                                []
+
+                _ ->
+                    []
+
+        initialToppings =
+            case menuItem of
+                OkonomiyakiItem r ->
+                    List.map (\t -> { menuItem = t, quantity = 1 }) r.defaultToppings
 
                 _ ->
                     []
@@ -255,14 +295,16 @@ initialBaseOrderItem menuItem =
     { baseItem = menuItem
     , quantity = 1
     , noodles = initialNoodles
-    , toppings = []
+    , toppings = initialToppings
     }
 
 
 {-| 麺の「＋」操作後に呼び、ベースと麺の整合性を保つ。
 
-`baseYasai`（`defaultNoodle` なし）に麺を追加した場合、
+`baseYasai`（`defaultNoodle` なし、かつ全部入りでない）に麺を追加した場合、
 追加した麺に対応するベース（`baseSoba` または `baseUdon`）へ切り替える。
+`baseZenbuIri` は `defaultNoodle` を持たないが、トッピングによって決まるベースであるため
+麺の追加によるベース切替の対象外とする。
 すでに `defaultNoodle` を持つベースの場合は何もしない。
 
 -}
@@ -272,7 +314,7 @@ normalizeBaseOnNoodleAdd noodleItem baseItem =
         newBase =
             case baseItem.baseItem of
                 OkonomiyakiItem r ->
-                    if r.defaultNoodle == Nothing then
+                    if r.defaultNoodle == Nothing && menuItemId baseItem.baseItem /= "base-zenbu-iri" then
                         baseForNoodle (menuItemId noodleItem)
                             |> Maybe.withDefault baseItem.baseItem
 
@@ -290,7 +332,12 @@ normalizeBaseOnNoodleAdd noodleItem baseItem =
 `defaultNoodle` を持つベース（`baseSoba`・`baseUdon`）で、
 その `defaultNoodle` の合計 quantity が 0 になった場合、
 ベースを `baseYasai` へ切り替える。
-`defaultNoodle` を持たないベースには影響しない。
+
+`baseZenbuIri`（`defaultNoodle` なし）は麺量に関わらず切り替えない。
+全部入りはイカ・エビが両方ある限り成立し、麺なし全部入り（1400円）も有効な状態とする。
+全部入りのベース切替はトッピング操作（`normalizeBaseOnToppingChange`）が担う。
+
+それ以外の `defaultNoodle` を持たないベースには影響しない。
 
 -}
 normalizeBaseOnNoodleChange : BaseOrderItem -> BaseOrderItem
@@ -319,6 +366,67 @@ normalizeBaseOnNoodleChange baseItem =
 
                 _ ->
                     baseItem.baseItem
+    in
+    { baseItem | baseItem = newBase }
+
+
+{-| トッピングの追加・削除操作後に呼び、ベースと全部入り条件の整合性を保つ。
+
+イカ（`topping-squid`）とエビ（`topping-shrimp`）が両方 `toppings` に存在する場合、
+`baseSoba`・`baseUdon`・`baseYasai` を `baseZenbuIri` へ切り替える。
+このとき `noodles` はそのまま引き継がれる。
+
+どちらかが欠けている場合、`baseZenbuIri` だったベースを麺の状態に応じて切り替える：
+  - `noodle-soba` が残っていれば `baseSoba`
+  - `noodle-udon` が残っていれば `baseUdon`
+  - 麺なしなら `baseYasai`
+
+-}
+normalizeBaseOnToppingChange : BaseOrderItem -> BaseOrderItem
+normalizeBaseOnToppingChange baseItem =
+    let
+        hasSquid =
+            List.any (\t -> menuItemId t.menuItem == "topping-squid") baseItem.toppings
+
+        hasShrimp =
+            List.any (\t -> menuItemId t.menuItem == "topping-shrimp") baseItem.toppings
+
+        hasNoodleSoba =
+            List.any (\n -> menuItemId n.menuItem == "noodle-soba") baseItem.noodles
+
+        hasNoodleUdon =
+            List.any (\n -> menuItemId n.menuItem == "noodle-udon") baseItem.noodles
+
+        currentBaseId =
+            menuItemId baseItem.baseItem
+
+        newBase =
+            if hasSquid && hasShrimp then
+                case currentBaseId of
+                    "base-soba" ->
+                        baseZenbuIri
+
+                    "base-udon" ->
+                        baseZenbuIri
+
+                    "base-yasai" ->
+                        baseZenbuIri
+
+                    _ ->
+                        baseItem.baseItem
+
+            else if currentBaseId == "base-zenbu-iri" then
+                if hasNoodleSoba then
+                    baseSoba
+
+                else if hasNoodleUdon then
+                    baseUdon
+
+                else
+                    baseYasai
+
+            else
+                baseItem.baseItem
     in
     { baseItem | baseItem = newBase }
 
@@ -367,7 +475,9 @@ calculateBaseItemTotal baseItem =
                                 case defaultNoodleId of
                                     Just dnId ->
                                         if menuItemId n.menuItem == dnId then
-                                            max 0 (n.quantity - 2)
+                                            -- 1玉(qty=2)分はベース price に含まれるため差分を計算
+                                            -- 0.5玉(qty=1)なら -1 → 100円の割引になる
+                                            n.quantity - 2
 
                                         else
                                             n.quantity
@@ -377,16 +487,18 @@ calculateBaseItemTotal baseItem =
                             )
                         |> List.sum
             in
-            if extraNoodleQuantity == 0 then
-                0
+            case defaultNoodleId of
+                Nothing ->
+                    if extraNoodleQuantity == 0 then
+                        0
 
-            else if defaultNoodleId /= Nothing then
-                -- defaultNoodle の基本料金はベース価格に含まれるため、追加半玉分のみ
-                100 * extraNoodleQuantity
+                    else
+                        -- defaultNoodle なし：basePrice（入場料）+ 半玉単価 × quantity
+                        100 + 100 * extraNoodleQuantity
 
-            else
-                -- defaultNoodle なし：basePrice（入場料）+ 半玉単価 × quantity
-                100 + 100 * extraNoodleQuantity
+                Just _ ->
+                    -- defaultNoodle の基本料金はベース価格に含まれるため、差分のみ加算（負なら割引）
+                    100 * extraNoodleQuantity
 
         toppingsPrice =
             baseItem.toppings

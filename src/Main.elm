@@ -127,7 +127,12 @@ update msg model =
             }
 
         ToggleTopping index toppingItem ->
-            { model | currentOrder = Order.toggleTopping index toppingItem model.currentOrder }
+            { model
+                | currentOrder =
+                    model.currentOrder
+                        |> Order.toggleTopping index toppingItem
+                        |> Order.normalizeBaseOnToppingChange index
+            }
 
         IncrementStandaloneQuantity menuItemId ->
             { model | currentOrder = Order.incrementStandaloneQuantity menuItemId model.currentOrder }
@@ -225,8 +230,14 @@ menuItemCard item =
                 StandardItem r ->
                     "¥" ++ String.fromInt r.price
 
-                OkonomiyakiItem r ->
-                    "¥" ++ String.fromInt r.price
+                OkonomiyakiItem _ ->
+                    -- TODO: OkonomiyakiItem の price フィールドは内部計算用であり表示用ではない。
+                    -- baseZenbuIri では price=600（ベースのみ）だが、表示すべき金額は
+                    -- 初期状態（そば1玉＋イカ＋エビ）の合計 1700 円である。
+                    -- 暫定的に initialBaseOrderItem + calculateBaseItemTotal で初期金額を求めている。
+                    -- 根本的な解決策としては MenuItem 型に表示用 price を分離するか、
+                    -- OkonomiyakiItem の price を「初期状態の合計金額」として再定義することを検討する。
+                    "¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal (Okonomiyaki.initialBaseOrderItem item))
 
                 NoodleItem r ->
                     "¥" ++ String.fromInt (r.basePrice + r.pricePerHalfBall) ++ "〜"

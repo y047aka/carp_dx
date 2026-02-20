@@ -182,6 +182,7 @@ allMenuItems =
       Okonomiyaki.baseYasai
     , Okonomiyaki.baseSoba
     , Okonomiyaki.baseUdon
+    , Okonomiyaki.baseZenbuIri
 
     -- 麺
     , Okonomiyaki.noodleSoba

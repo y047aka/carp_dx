@@ -1,4 +1,4 @@
-module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, normalizeBaseOnNoodleChange, normalizeBaseOnNoodleAdd)
+module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, normalizeBaseOnNoodleChange, normalizeBaseOnNoodleAdd, normalizeBaseOnToppingChange)
 
 import Menu exposing (MenuItem(..), menuItemId, menuItemPrice)
 import Okonomiyaki exposing (BaseOrderItem)
@@ -526,6 +526,28 @@ normalizeBaseOnNoodleChange index order =
                         case item of
                             BaseOrder baseItem ->
                                 BaseOrder (Okonomiyaki.normalizeBaseOnNoodleChange baseItem)
+
+                            _ ->
+                                item
+
+                    else
+                        item
+                )
+                order.items
+    }
+
+
+-- トッピングの追加・削除後に呼ぶ。全部入り条件の成立・解除に応じてベースを切り替える
+normalizeBaseOnToppingChange : Int -> Order -> Order
+normalizeBaseOnToppingChange index order =
+    { order
+        | items =
+            List.indexedMap
+                (\i item ->
+                    if i == index then
+                        case item of
+                            BaseOrder baseItem ->
+                                BaseOrder (Okonomiyaki.normalizeBaseOnToppingChange baseItem)
 
                             _ ->
                                 item

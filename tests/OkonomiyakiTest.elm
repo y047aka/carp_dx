@@ -94,15 +94,29 @@ suite =
                             |> List.map (\n -> ( menuItemId n.menuItem, n.quantity ))
                             |> Expect.equal [ ( "noodle-udon", 2 ) ]
                 ]
+            , describe "baseZenbuIri（defaultNoodle: なし、defaultToppings: イカ・エビ）"
+                [ test "noodles にそば1玉（quantity=2）がデフォルトでセットされる" <|
+                    \_ ->
+                        Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseZenbuIri
+                            |> .noodles
+                            |> List.map (\n -> ( menuItemId n.menuItem, n.quantity ))
+                            |> Expect.equal [ ( "noodle-soba", 2 ) ]
+                , test "toppings にイカとエビが各1個でセットされる" <|
+                    \_ ->
+                        Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseZenbuIri
+                            |> .toppings
+                            |> List.map (\t -> ( menuItemId t.menuItem, t.quantity ))
+                            |> Expect.equal [ ( "topping-squid", 1 ), ( "topping-shrimp", 1 ) ]
+                ]
             , describe "共通の初期値"
                 [ test "quantity は 1 で初期化される" <|
                     \_ ->
                         Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseYasai
                             |> .quantity
                             |> Expect.equal 1
-                , test "toppings は空で初期化される" <|
+                , test "toppings は空で初期化される（defaultToppings なしのベース）" <|
                     \_ ->
-                        Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseSoba
+                        Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseYasai
                             |> .toppings
                             |> Expect.equal []
                 ]
@@ -229,8 +243,13 @@ suite =
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 2200
                 ]
-            , describe "defaultNoodle ありのベース（baseSoba）に麺を追加"
-                [ test "そば1.5玉（qty=3）: 1200 + 100×1 = 1300円（1玉分は price 込み）" <|
+            , describe "defaultNoodle ありのベース（baseSoba）に麺を追加・減量"
+                [ test "そば0.5玉（qty=1）: 1200 - 100×1 = 1100円（1玉分は price 込みなので差引）" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseSoba, quantity = 1, noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 1 } ], toppings = [] }
+                            |> Okonomiyaki.calculateBaseItemTotal
+                            |> Expect.equal 1100
+                , test "そば1.5玉（qty=3）: 1200 + 100×1 = 1300円（1玉分は price 込み）" <|
                     \_ ->
                         { baseItem = Okonomiyaki.baseSoba, quantity = 1, noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 3 } ], toppings = [] }
                             |> Okonomiyaki.calculateBaseItemTotal
@@ -272,6 +291,221 @@ suite =
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 4500
+                ]
+            , describe "全部入り（baseZenbuIri）の価格計算"
+                [ test "baseZenbuIri × 1（麺なし・イカ・エビ込み）= 1400円" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseZenbuIri
+                        , quantity = 1
+                        , noodles = []
+                        , toppings =
+                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.calculateBaseItemTotal
+                            |> Expect.equal 1400
+                , test "baseZenbuIri × 1（そば1玉・イカ・エビ込み）= 1700円" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseZenbuIri
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings =
+                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.calculateBaseItemTotal
+                            |> Expect.equal 1700
+                , test "baseZenbuIri × 1（うどん1玉・イカ・エビ込み）= 1700円" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseZenbuIri
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , toppings =
+                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.calculateBaseItemTotal
+                            |> Expect.equal 1700
+                , test "baseZenbuIri × 1（そば0.5玉・イカ・エビ込み）= 1600円" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseZenbuIri
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 1 } ]
+                        , toppings =
+                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.calculateBaseItemTotal
+                            |> Expect.equal 1600
+                , test "baseZenbuIri × 2（そば1玉・イカ・エビ込み）= 3400円" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseZenbuIri
+                        , quantity = 2
+                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings =
+                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.calculateBaseItemTotal
+                            |> Expect.equal 3400
+                ]
+            ]
+        , describe "normalizeBaseOnNoodleChange（baseZenbuIri）"
+            [ test "baseZenbuIri は麺が0玉になっても baseZenbuIri のまま変化しない" <|
+                \_ ->
+                    { baseItem = Okonomiyaki.baseZenbuIri
+                    , quantity = 1
+                    , noodles = []
+                    , toppings =
+                        [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                        , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                        ]
+                    }
+                        |> Okonomiyaki.normalizeBaseOnNoodleChange
+                        |> .baseItem
+                        |> menuItemId
+                        |> Expect.equal "base-zenbu-iri"
+            ]
+        , describe "normalizeBaseOnToppingChange"
+            [ describe "イカとエビが両方あると全部入りに切り替わる"
+                [ test "baseSoba + イカ + エビ → baseZenbuIri" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseSoba
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings =
+                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBaseOnToppingChange
+                            |> .baseItem
+                            |> menuItemId
+                            |> Expect.equal "base-zenbu-iri"
+                , test "baseUdon + イカ + エビ → baseZenbuIri" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseUdon
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , toppings =
+                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBaseOnToppingChange
+                            |> .baseItem
+                            |> menuItemId
+                            |> Expect.equal "base-zenbu-iri"
+                , test "baseYasai + イカ + エビ → baseZenbuIri" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseYasai
+                        , quantity = 1
+                        , noodles = []
+                        , toppings =
+                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBaseOnToppingChange
+                            |> .baseItem
+                            |> menuItemId
+                            |> Expect.equal "base-zenbu-iri"
+                ]
+            , describe "全部入りからイカまたはエビを削除すると元のベースに戻る"
+                [ test "baseZenbuIri + エビのみ（そば残り）→ baseSoba" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseZenbuIri
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings = [ { menuItem = MenuData.toppingShrimp, quantity = 1 } ]
+                        }
+                            |> Okonomiyaki.normalizeBaseOnToppingChange
+                            |> .baseItem
+                            |> menuItemId
+                            |> Expect.equal "base-soba"
+                , test "baseZenbuIri + イカのみ（うどん残り）→ baseUdon" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseZenbuIri
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , toppings = [ { menuItem = MenuData.toppingSquid, quantity = 1 } ]
+                        }
+                            |> Okonomiyaki.normalizeBaseOnToppingChange
+                            |> .baseItem
+                            |> menuItemId
+                            |> Expect.equal "base-udon"
+                , test "baseZenbuIri + イカのみ（麺なし）→ baseYasai" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseZenbuIri
+                        , quantity = 1
+                        , noodles = []
+                        , toppings = [ { menuItem = MenuData.toppingSquid, quantity = 1 } ]
+                        }
+                            |> Okonomiyaki.normalizeBaseOnToppingChange
+                            |> .baseItem
+                            |> menuItemId
+                            |> Expect.equal "base-yasai"
+                ]
+            , describe "全部入りのまま変化しないケース"
+                [ test "baseZenbuIri + イカ + エビ両方あれば変化しない" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseZenbuIri
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings =
+                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBaseOnToppingChange
+                            |> .baseItem
+                            |> menuItemId
+                            |> Expect.equal "base-zenbu-iri"
+                ]
+            , describe "麺はそのまま引き継がれる"
+                [ test "baseUdon + イカ + エビ → baseZenbuIri だが noodles はうどんのまま" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseUdon
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , toppings =
+                            [ { menuItem = MenuData.toppingSquid, quantity = 1 }
+                            , { menuItem = MenuData.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBaseOnToppingChange
+                            |> .noodles
+                            |> List.map (\n -> ( menuItemId n.menuItem, n.quantity ))
+                            |> Expect.equal [ ( "noodle-udon", 2 ) ]
+                ]
+            , describe "イカのみ・エビのみでは切り替わらない"
+                [ test "baseSoba + イカのみ → 変化なし" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseSoba
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings = [ { menuItem = MenuData.toppingSquid, quantity = 1 } ]
+                        }
+                            |> Okonomiyaki.normalizeBaseOnToppingChange
+                            |> .baseItem
+                            |> menuItemId
+                            |> Expect.equal "base-soba"
+                , test "baseSoba + エビのみ → 変化なし" <|
+                    \_ ->
+                        { baseItem = Okonomiyaki.baseSoba
+                        , quantity = 1
+                        , noodles = [ { menuItem = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings = [ { menuItem = MenuData.toppingShrimp, quantity = 1 } ]
+                        }
+                            |> Okonomiyaki.normalizeBaseOnToppingChange
+                            |> .baseItem
+                            |> menuItemId
+                            |> Expect.equal "base-soba"
                 ]
             ]
         ]

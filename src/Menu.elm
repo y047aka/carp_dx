@@ -16,6 +16,7 @@ type MenuItem
         , name : String
         , price : Int
         , defaultNoodle : Maybe MenuItem
+        , defaultToppings : List MenuItem
         , category : MenuCategory
         }
     | NoodleItem { id : String, name : String, basePrice : Int, pricePerHalfBall : Int, category : MenuCategory }

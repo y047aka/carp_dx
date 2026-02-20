@@ -55,11 +55,11 @@ suite =
                     allMenuItems
                         |> List.all (\item -> menuItemPrice item 1 > 0)
                         |> Expect.equal True
-            , test "全19品目が登録されている" <|
+            , test "全20品目が登録されている" <|
                 \_ ->
                     allMenuItems
                         |> List.length
-                        |> Expect.equal 19
+                        |> Expect.equal 20
             ]
         ]
 
