@@ -228,15 +228,16 @@ menuItemCard item =
         priceText =
             case item of
                 StandardItem r ->
-                    "¥" ++ String.fromInt r.price
+                    if menuItemCategory item == Base then
+                        case Okonomiyaki.menuItemToOkonomiyakiBase item of
+                            Just base ->
+                                "¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal (Okonomiyaki.initialBaseOrderItem base))
 
-                OkonomiyakiItem _ ->
-                    case Okonomiyaki.menuItemToOkonomiyakiBase item of
-                        Just base ->
-                            "¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal (Okonomiyaki.initialBaseOrderItem base))
+                            Nothing ->
+                                "¥?"
 
-                        Nothing ->
-                            "¥?"
+                    else
+                        "¥" ++ String.fromInt r.price
 
                 NoodleItem r ->
                     "¥" ++ String.fromInt (r.basePrice + r.pricePerHalfBall) ++ "〜"

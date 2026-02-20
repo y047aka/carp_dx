@@ -45,7 +45,7 @@ module Okonomiyaki exposing
 
 -}
 
-import Menu exposing (MenuCategory(..), MenuItem(..), menuItemId, menuItemPrice)
+import Menu exposing (MenuCategory(..), MenuItem(..), menuItemCategory, menuItemId, menuItemPrice)
 
 
 -- 型定義
@@ -116,51 +116,45 @@ type alias BaseOrderItem =
 {-| 野菜入りお好み焼き（デフォルト麺なし、900円）。 -}
 baseYasai : MenuItem
 baseYasai =
-    OkonomiyakiItem
+    StandardItem
         { id = "base-yasai"
         , name = "野菜入り"
         , price = 900
-        , defaultNoodle = Nothing
-        , defaultToppings = []
         , category = Base
         }
 
 
-{-| そば入りお好み焼き（defaultNoodle: noodleSoba、1200円）。
+{-| そば入りお好み焼き（1200円）。
 
 `price` にそば1玉分の料金が含まれている。
 
 -}
 baseSoba : MenuItem
 baseSoba =
-    OkonomiyakiItem
+    StandardItem
         { id = "base-soba"
         , name = "そば入り"
         , price = 1200
-        , defaultNoodle = Just noodleSoba
-        , defaultToppings = []
         , category = Base
         }
 
 
-{-| うどん入りお好み焼き（defaultNoodle: noodleUdon、1200円）。
+{-| うどん入りお好み焼き（1200円）。
 
 `price` にうどん1玉分の料金が含まれている。
 
 -}
 baseUdon : MenuItem
 baseUdon =
-    OkonomiyakiItem
+    StandardItem
         { id = "base-udon"
         , name = "うどん入り"
         , price = 1200
-        , defaultNoodle = Just noodleUdon
-        , defaultToppings = []
         , category = Base
         }
 
 
-{-| 全部入りお好み焼き（defaultNoodle: なし、defaultToppings: イカ・エビ、ベース600円）。
+{-| 全部入りお好み焼き（ベース600円）。
 
 麺の種類を選ばず、イカ・エビのトッピング込みで麺1玉時に1700円になる。
 価格計算: basePrice(600) + noodlePrice(100 + 100×qty) + toppingsPrice(800)
@@ -169,15 +163,10 @@ baseUdon =
 -}
 baseZenbuIri : MenuItem
 baseZenbuIri =
-    OkonomiyakiItem
+    StandardItem
         { id = "base-zenbu-iri"
         , name = "全部入り"
         , price = 600
-        , defaultNoodle = Nothing
-        , defaultToppings =
-            [ StandardItem { id = "topping-squid", name = "イカ", price = 400, category = Topping }
-            , StandardItem { id = "topping-shrimp", name = "エビ", price = 400, category = Topping }
-            ]
         , category = Base
         }
 
@@ -339,26 +328,25 @@ ID 文字列参照をこの関数1箇所に局所化する。
 -}
 menuItemToOkonomiyakiBase : MenuItem -> Maybe OkonomiyakiBase
 menuItemToOkonomiyakiBase menuItem =
-    case menuItem of
-        OkonomiyakiItem r ->
-            case r.id of
-                "base-yasai" ->
-                    Just baseYasaiBase
+    if menuItemCategory menuItem == Base then
+        case menuItemId menuItem of
+            "base-yasai" ->
+                Just baseYasaiBase
 
-                "base-soba" ->
-                    Just baseSobaBase
+            "base-soba" ->
+                Just baseSobaBase
 
-                "base-udon" ->
-                    Just baseUdonBase
+            "base-udon" ->
+                Just baseUdonBase
 
-                "base-zenbu-iri" ->
-                    Just baseZenbuIriBase
+            "base-zenbu-iri" ->
+                Just baseZenbuIriBase
 
-                _ ->
-                    Nothing
+            _ ->
+                Nothing
 
-        _ ->
-            Nothing
+    else
+        Nothing
 
 
 -- 構築・正規化・計算

@@ -11,9 +11,9 @@ suite : Test
 suite =
     describe "Menu"
         [ describe "お好み焼き（ベース）"
-            [ testOkonomiyakiMenuItem "野菜入り" 900 Nothing Okonomiyaki.baseYasai
-            , testOkonomiyakiMenuItem "そば入り" 1200 (Just "noodle-soba") Okonomiyaki.baseSoba
-            , testOkonomiyakiMenuItem "うどん入り" 1200 (Just "noodle-udon") Okonomiyaki.baseUdon
+            [ testStandardMenuItem "野菜入り" 900 Okonomiyaki.baseYasai
+            , testStandardMenuItem "そば入り" 1200 Okonomiyaki.baseSoba
+            , testStandardMenuItem "うどん入り" 1200 Okonomiyaki.baseUdon
             ]
         , describe "麺"
             [ testNoodleMenuItem "そば" 100 100 Okonomiyaki.noodleSoba
@@ -75,36 +75,8 @@ testStandardMenuItem expectedName expectedPrice item =
                     StandardItem r ->
                         Expect.equal expectedPrice r.price
 
-                    OkonomiyakiItem _ ->
-                        Expect.fail "Expected StandardItem"
-
                     NoodleItem _ ->
                         Expect.fail "Expected StandardItem"
-        ]
-
-
-testOkonomiyakiMenuItem : String -> Int -> Maybe String -> MenuItem -> Test
-testOkonomiyakiMenuItem expectedName expectedPrice expectedDefaultNoodleId item =
-    describe expectedName
-        [ test "名前が正しい" <|
-            \_ -> Expect.equal expectedName (menuItemName item)
-        , test "価格が正しい" <|
-            \_ ->
-                case item of
-                    OkonomiyakiItem r ->
-                        Expect.equal expectedPrice r.price
-
-                    _ ->
-                        Expect.fail "Expected OkonomiyakiItem"
-        , test "defaultNoodle が正しい" <|
-            \_ ->
-                case item of
-                    OkonomiyakiItem r ->
-                        Expect.equal expectedDefaultNoodleId
-                            (Maybe.map menuItemId r.defaultNoodle)
-
-                    _ ->
-                        Expect.fail "Expected OkonomiyakiItem"
         ]
 
 
@@ -121,9 +93,6 @@ testNoodleMenuItem expectedName expectedBasePrice expectedPricePerHalfBall item 
 
                     StandardItem _ ->
                         Expect.fail "Expected NoodleItem"
-
-                    OkonomiyakiItem _ ->
-                        Expect.fail "Expected NoodleItem"
         , test "0.5玉あたりの価格が正しい" <|
             \_ ->
                 case item of
@@ -131,8 +100,5 @@ testNoodleMenuItem expectedName expectedBasePrice expectedPricePerHalfBall item 
                         Expect.equal expectedPricePerHalfBall r.pricePerHalfBall
 
                     StandardItem _ ->
-                        Expect.fail "Expected NoodleItem"
-
-                    OkonomiyakiItem _ ->
                         Expect.fail "Expected NoodleItem"
         ]

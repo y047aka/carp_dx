@@ -11,14 +11,6 @@ type MenuCategory
 
 type MenuItem
     = StandardItem { id : String, name : String, price : Int, category : MenuCategory }
-    | OkonomiyakiItem
-        { id : String
-        , name : String
-        , price : Int
-        , defaultNoodle : Maybe MenuItem
-        , defaultToppings : List MenuItem
-        , category : MenuCategory
-        }
     | NoodleItem { id : String, name : String, basePrice : Int, pricePerHalfBall : Int, category : MenuCategory }
 
 
@@ -26,9 +18,6 @@ menuItemId : MenuItem -> String
 menuItemId item =
     case item of
         StandardItem r ->
-            r.id
-
-        OkonomiyakiItem r ->
             r.id
 
         NoodleItem r ->
@@ -41,9 +30,6 @@ menuItemName item =
         StandardItem r ->
             r.name
 
-        OkonomiyakiItem r ->
-            r.name
-
         NoodleItem r ->
             r.name
 
@@ -52,9 +38,6 @@ menuItemCategory : MenuItem -> MenuCategory
 menuItemCategory item =
     case item of
         StandardItem r ->
-            r.category
-
-        OkonomiyakiItem r ->
             r.category
 
         NoodleItem r ->
@@ -104,9 +87,6 @@ menuItemPrice : MenuItem -> Int -> Int
 menuItemPrice item quantity =
     case item of
         StandardItem r ->
-            r.price * quantity
-
-        OkonomiyakiItem r ->
             r.price * quantity
 
         NoodleItem r ->
