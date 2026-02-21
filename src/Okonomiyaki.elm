@@ -27,9 +27,7 @@ module Okonomiyaki exposing
     , isDefaultNoodleOf
     , kindToBase
     , initialBaseOrderItem
-    , normalizeBaseOnNoodleAdd
-    , normalizeBaseOnNoodleChange
-    , normalizeBaseOnToppingChange
+    , normalizeBase
     , calculateBaseItemTotal
     )
 
@@ -48,7 +46,8 @@ module Okonomiyaki exposing
     その麺1玉分の価格はベースの `basePrice` に含まれている。
   - **麺の数量** は内部的に「半玉単位」で管理する（quantity 2 = 1玉）。
     表示変換には `noodleQuantityDisplay` を使用する。
-  - ベースと麺の整合性を保つ正規化関数は、麺の増減操作の直後に呼び出す。
+  - `normalizeBase` は麺・トッピングの状態からベースを一意に決定する。
+    麺・トッピングの操作後にこの関数を1つ呼ぶだけで整合性が保たれる。
 
 -}
 
@@ -391,84 +390,20 @@ initialBaseOrderItem base =
     }
 
 
-{-| 麺の「＋」操作後に呼び、ベースと麺の整合性を保つ。
+{-| 麺・トッピングの状態からベースを一意に決定し、整合性を保つ。
 
-`Yasai`（`includedNoodleKind` なし）に麺を追加した場合、
-追加した麺に対応するベース（`Soba` または `Udon`）へ切り替える。
-`ZenbuIri` はトッピングによって決まるベースであるため麺の追加によるベース切替の対象外とする。
-すでに `includedNoodleKind` を持つベースの場合は何もしない。
+ベース決定ルール（優先順位順）:
 
--}
-normalizeBaseOnNoodleAdd : Noodle -> BaseOrderItem -> BaseOrderItem
-normalizeBaseOnNoodleAdd noodle baseItem =
-    let
-        newBase =
-            case baseItem.base.kind of
-                Yasai ->
-                    case noodle.kind of
-                        NoodleKindSoba ->
-                            baseSobaBase
+  1. イカとエビが両方 toppings にあれば → ZenbuIri
+  2. そばが noodles にあれば → Soba
+  3. うどんが noodles にあれば → Udon
+  4. いずれでもなければ → Yasai
 
-                        NoodleKindUdon ->
-                            baseUdonBase
-
-                _ ->
-                    baseItem.base
-    in
-    { baseItem | base = newBase }
-
-
-{-| 麺の「−」操作後に呼び、ベースと麺の整合性を保つ。
-
-`includedNoodleKind` を持つベース（`Soba`・`Udon`）で、
-その込み麺の合計 quantity が 0 になった場合、ベースを `Yasai` へ切り替える。
-
-`ZenbuIri`（`includedNoodleKind` なし）は麺量に関わらず切り替えない。
-全部入りはイカ・エビが両方ある限り成立し、麺なし全部入り（1400円）も有効な状態とする。
-全部入りのベース切替はトッピング操作（`normalizeBaseOnToppingChange`）が担う。
-
-それ以外の `includedNoodleKind` を持たないベースには影響しない。
+麺・トッピングのいずれの操作後にも、この関数を1つ呼ぶだけでベースの整合性が保たれる。
 
 -}
-normalizeBaseOnNoodleChange : BaseOrderItem -> BaseOrderItem
-normalizeBaseOnNoodleChange baseItem =
-    let
-        newBase =
-            case baseItem.base.includedNoodleKind of
-                Just includedKind ->
-                    let
-                        includedNoodleQty =
-                            baseItem.noodles
-                                |> List.filter (\n -> n.noodle.kind == includedKind)
-                                |> List.map .quantity
-                                |> List.sum
-                    in
-                    if includedNoodleQty == 0 then
-                        baseYasaiBase
-
-                    else
-                        baseItem.base
-
-                Nothing ->
-                    baseItem.base
-    in
-    { baseItem | base = newBase }
-
-
-{-| トッピングの追加・削除操作後に呼び、ベースと全部入り条件の整合性を保つ。
-
-イカ（`topping-squid`）とエビ（`topping-shrimp`）が両方 `toppings` に存在する場合、
-`Soba`・`Udon`・`Yasai` を `ZenbuIri` へ切り替える。
-このとき `noodles` はそのまま引き継がれる。
-
-どちらかが欠けている場合、`ZenbuIri` だったベースを麺の状態に応じて切り替える：
-  - そばが残っていれば `Soba`
-  - うどんが残っていれば `Udon`
-  - 麺なしなら `Yasai`
-
--}
-normalizeBaseOnToppingChange : BaseOrderItem -> BaseOrderItem
-normalizeBaseOnToppingChange baseItem =
+normalizeBase : BaseOrderItem -> BaseOrderItem
+normalizeBase baseItem =
     let
         hasSquid =
             List.any (\t -> t.topping.kind == ToppingKindSquid) baseItem.toppings
@@ -481,27 +416,16 @@ normalizeBaseOnToppingChange baseItem =
 
         newBase =
             if hasSquid && hasShrimp then
-                case baseItem.base.kind of
-                    ZenbuIri ->
-                        baseItem.base
+                baseZenbuIriBase
 
-                    _ ->
-                        baseZenbuIriBase
+            else if hasNoodleKind NoodleKindSoba then
+                baseSobaBase
+
+            else if hasNoodleKind NoodleKindUdon then
+                baseUdonBase
 
             else
-                case baseItem.base.kind of
-                    ZenbuIri ->
-                        if hasNoodleKind NoodleKindSoba then
-                            baseSobaBase
-
-                        else if hasNoodleKind NoodleKindUdon then
-                            baseUdonBase
-
-                        else
-                            baseYasaiBase
-
-                    _ ->
-                        baseItem.base
+                baseYasaiBase
     in
     { baseItem | base = newBase }
 

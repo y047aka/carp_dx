@@ -296,7 +296,7 @@ suite =
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         -- qty: 2 → 1 → 0（削除）
-                        |> Order.normalizeBaseOnNoodleChange 0
+                        |> Order.normalizeBase 0
                         |> Order.calculateTotal
                         -- baseYasai: 900
                         |> Expect.equal 900

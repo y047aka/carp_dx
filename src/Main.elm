@@ -121,7 +121,7 @@ update msg model =
                 | currentOrder =
                     model.currentOrder
                         |> Order.incrementNoodleQuantity index noodle
-                        |> Order.normalizeBaseOnNoodleAdd index noodle
+                        |> Order.normalizeBase index
             }
 
         DecrementNoodleQuantity index noodle ->
@@ -129,7 +129,7 @@ update msg model =
                 | currentOrder =
                     model.currentOrder
                         |> Order.decrementNoodleQuantity index noodle
-                        |> Order.normalizeBaseOnNoodleChange index
+                        |> Order.normalizeBase index
             }
 
         ToggleTopping index toppingItem ->
@@ -137,7 +137,7 @@ update msg model =
                 | currentOrder =
                     model.currentOrder
                         |> Order.toggleTopping index toppingItem
-                        |> Order.normalizeBaseOnToppingChange index
+                        |> Order.normalizeBase index
             }
 
         IncrementStandaloneQuantity itemId ->

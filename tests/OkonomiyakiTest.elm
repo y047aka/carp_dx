@@ -95,86 +95,213 @@ suite =
                             |> Expect.equal []
                 ]
             ]
-        , describe "normalizeBaseOnNoodleAdd"
-            [ describe "Yasai に麺を追加するとベースが切り替わる"
-                [ test "そばを追加すると Soba になる" <|
+        , describe "normalizeBase"
+            [ describe "麺の状態に応じたベース決定"
+                [ test "そばがあれば Soba になる" <|
                     \_ ->
-                        Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseYasaiBase
-                            |> Okonomiyaki.normalizeBaseOnNoodleAdd Okonomiyaki.noodleSoba
+                        { base = Okonomiyaki.baseYasaiBase
+                        , quantity = 1
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings = []
+                        }
+                            |> Okonomiyaki.normalizeBase
                             |> .base
                             |> .kind
                             |> Expect.equal Okonomiyaki.Soba
-                , test "うどんを追加すると Udon になる" <|
+                , test "うどんがあれば Udon になる" <|
                     \_ ->
-                        Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseYasaiBase
-                            |> Okonomiyaki.normalizeBaseOnNoodleAdd Okonomiyaki.noodleUdon
+                        { base = Okonomiyaki.baseYasaiBase
+                        , quantity = 1
+                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , toppings = []
+                        }
+                            |> Okonomiyaki.normalizeBase
                             |> .base
                             |> .kind
                             |> Expect.equal Okonomiyaki.Udon
-                ]
-            , describe "込み麺を持つベースは切り替わらない"
-                [ test "Soba にそばを追加してもベースは変わらない" <|
-                    \_ ->
-                        Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseSobaBase
-                            |> Okonomiyaki.normalizeBaseOnNoodleAdd Okonomiyaki.noodleSoba
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.Soba
-                , test "Udon にうどんを追加してもベースは変わらない" <|
-                    \_ ->
-                        Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseUdonBase
-                            |> Okonomiyaki.normalizeBaseOnNoodleAdd Okonomiyaki.noodleUdon
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.Udon
-                ]
-            ]
-        , describe "normalizeBaseOnNoodleChange"
-            [ describe "込み麺が0玉になると Yasai に切り替わる"
-                [ test "Soba でそばが0玉になると Yasai になる" <|
+                , test "麺がなければ Yasai になる" <|
                     \_ ->
                         { base = Okonomiyaki.baseSobaBase
                         , quantity = 1
                         , noodles = []
                         , toppings = []
                         }
-                            |> Okonomiyaki.normalizeBaseOnNoodleChange
+                            |> Okonomiyaki.normalizeBase
                             |> .base
                             |> .kind
                             |> Expect.equal Okonomiyaki.Yasai
-                , test "Udon でうどんが0玉になると Yasai になる" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseUdonBase
-                        , quantity = 1
-                        , noodles = []
-                        , toppings = []
-                        }
-                            |> Okonomiyaki.normalizeBaseOnNoodleChange
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.Yasai
-                ]
-            , describe "込み麺が残っていればベースは変わらない"
-                [ test "Soba でそばが残っていれば変わらない" <|
+                , test "そばが残っていれば Soba のまま" <|
                     \_ ->
                         { base = Okonomiyaki.baseSobaBase
                         , quantity = 1
                         , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ]
                         , toppings = []
                         }
-                            |> Okonomiyaki.normalizeBaseOnNoodleChange
+                            |> Okonomiyaki.normalizeBase
+                            |> .base
+                            |> .kind
+                            |> Expect.equal Okonomiyaki.Soba
+                , test "そばとうどんが両方あればそば優先で Soba になる" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseYasaiBase
+                        , quantity = 1
+                        , noodles =
+                            [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 }
+                            , { noodle = Okonomiyaki.noodleUdon, quantity = 2 }
+                            ]
+                        , toppings = []
+                        }
+                            |> Okonomiyaki.normalizeBase
                             |> .base
                             |> .kind
                             |> Expect.equal Okonomiyaki.Soba
                 ]
-            , describe "込み麺を持たないベースは変化しない"
-                [ test "Yasai は変化しない" <|
+            , describe "イカとエビが両方あると ZenbuIri に切り替わる"
+                [ test "Soba + イカ + エビ → ZenbuIri" <|
                     \_ ->
-                        Okonomiyaki.initialBaseOrderItem Okonomiyaki.baseYasaiBase
-                            |> Okonomiyaki.normalizeBaseOnNoodleChange
+                        { base = Okonomiyaki.baseSobaBase
+                        , quantity = 1
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings =
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBase
+                            |> .base
+                            |> .kind
+                            |> Expect.equal Okonomiyaki.ZenbuIri
+                , test "Udon + イカ + エビ → ZenbuIri" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseUdonBase
+                        , quantity = 1
+                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , toppings =
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBase
+                            |> .base
+                            |> .kind
+                            |> Expect.equal Okonomiyaki.ZenbuIri
+                , test "Yasai + イカ + エビ → ZenbuIri" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseYasaiBase
+                        , quantity = 1
+                        , noodles = []
+                        , toppings =
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBase
+                            |> .base
+                            |> .kind
+                            |> Expect.equal Okonomiyaki.ZenbuIri
+                , test "ZenbuIri + イカ + エビ（麺なし）→ ZenbuIri のまま" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseZenbuIriBase
+                        , quantity = 1
+                        , noodles = []
+                        , toppings =
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBase
+                            |> .base
+                            |> .kind
+                            |> Expect.equal Okonomiyaki.ZenbuIri
+                , test "ZenbuIri + イカ + エビ（そば有り）→ ZenbuIri のまま" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseZenbuIriBase
+                        , quantity = 1
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings =
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBase
+                            |> .base
+                            |> .kind
+                            |> Expect.equal Okonomiyaki.ZenbuIri
+                ]
+            , describe "全部入り条件が崩れると麺に応じたベースに戻る"
+                [ test "ZenbuIri + エビのみ（そば残り）→ Soba" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseZenbuIriBase
+                        , quantity = 1
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingShrimp, quantity = 1 } ]
+                        }
+                            |> Okonomiyaki.normalizeBase
+                            |> .base
+                            |> .kind
+                            |> Expect.equal Okonomiyaki.Soba
+                , test "ZenbuIri + イカのみ（うどん残り）→ Udon" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseZenbuIriBase
+                        , quantity = 1
+                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
+                        }
+                            |> Okonomiyaki.normalizeBase
+                            |> .base
+                            |> .kind
+                            |> Expect.equal Okonomiyaki.Udon
+                , test "ZenbuIri + イカのみ（麺なし）→ Yasai" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseZenbuIriBase
+                        , quantity = 1
+                        , noodles = []
+                        , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
+                        }
+                            |> Okonomiyaki.normalizeBase
                             |> .base
                             |> .kind
                             |> Expect.equal Okonomiyaki.Yasai
+                ]
+            , describe "麺はそのまま引き継がれる"
+                [ test "Udon + イカ + エビ → ZenbuIri だが noodles はうどんのまま" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseUdonBase
+                        , quantity = 1
+                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
+                        , toppings =
+                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
+                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
+                            ]
+                        }
+                            |> Okonomiyaki.normalizeBase
+                            |> .noodles
+                            |> List.map (\n -> ( n.noodle.kind, n.quantity ))
+                            |> Expect.equal [ ( Okonomiyaki.NoodleKindUdon, 2 ) ]
+                ]
+            , describe "イカのみ・エビのみでは ZenbuIri にならない"
+                [ test "Soba + イカのみ → Soba のまま" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseSobaBase
+                        , quantity = 1
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
+                        }
+                            |> Okonomiyaki.normalizeBase
+                            |> .base
+                            |> .kind
+                            |> Expect.equal Okonomiyaki.Soba
+                , test "Soba + エビのみ → Soba のまま" <|
+                    \_ ->
+                        { base = Okonomiyaki.baseSobaBase
+                        , quantity = 1
+                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
+                        , toppings = [ { topping = Okonomiyaki.toppingShrimp, quantity = 1 } ]
+                        }
+                            |> Okonomiyaki.normalizeBase
+                            |> .base
+                            |> .kind
+                            |> Expect.equal Okonomiyaki.Soba
                 ]
             ]
         , describe "calculateBaseItemTotal"
@@ -327,159 +454,6 @@ suite =
                         }
                             |> Okonomiyaki.calculateBaseItemTotal
                             |> Expect.equal 3400
-                ]
-            ]
-        , describe "normalizeBaseOnNoodleChange（ZenbuIri）"
-            [ test "ZenbuIri は麺が0玉になっても ZenbuIri のまま変化しない" <|
-                \_ ->
-                    { base = Okonomiyaki.baseZenbuIriBase
-                    , quantity = 1
-                    , noodles = []
-                    , toppings =
-                        [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
-                        , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
-                        ]
-                    }
-                        |> Okonomiyaki.normalizeBaseOnNoodleChange
-                        |> .base
-                        |> .kind
-                        |> Expect.equal Okonomiyaki.ZenbuIri
-            ]
-        , describe "normalizeBaseOnToppingChange"
-            [ describe "イカとエビが両方あると全部入りに切り替わる"
-                [ test "Soba + イカ + エビ → ZenbuIri" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseSobaBase
-                        , quantity = 1
-                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
-                        , toppings =
-                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
-                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
-                            ]
-                        }
-                            |> Okonomiyaki.normalizeBaseOnToppingChange
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.ZenbuIri
-                , test "Udon + イカ + エビ → ZenbuIri" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseUdonBase
-                        , quantity = 1
-                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
-                        , toppings =
-                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
-                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
-                            ]
-                        }
-                            |> Okonomiyaki.normalizeBaseOnToppingChange
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.ZenbuIri
-                , test "Yasai + イカ + エビ → ZenbuIri" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseYasaiBase
-                        , quantity = 1
-                        , noodles = []
-                        , toppings =
-                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
-                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
-                            ]
-                        }
-                            |> Okonomiyaki.normalizeBaseOnToppingChange
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.ZenbuIri
-                ]
-            , describe "全部入りからイカまたはエビを削除すると元のベースに戻る"
-                [ test "ZenbuIri + エビのみ（そば残り）→ Soba" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseZenbuIriBase
-                        , quantity = 1
-                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
-                        , toppings = [ { topping = Okonomiyaki.toppingShrimp, quantity = 1 } ]
-                        }
-                            |> Okonomiyaki.normalizeBaseOnToppingChange
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.Soba
-                , test "ZenbuIri + イカのみ（うどん残り）→ Udon" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseZenbuIriBase
-                        , quantity = 1
-                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
-                        , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
-                        }
-                            |> Okonomiyaki.normalizeBaseOnToppingChange
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.Udon
-                , test "ZenbuIri + イカのみ（麺なし）→ Yasai" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseZenbuIriBase
-                        , quantity = 1
-                        , noodles = []
-                        , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
-                        }
-                            |> Okonomiyaki.normalizeBaseOnToppingChange
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.Yasai
-                ]
-            , describe "全部入りのまま変化しないケース"
-                [ test "ZenbuIri + イカ + エビ両方あれば変化しない" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseZenbuIriBase
-                        , quantity = 1
-                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
-                        , toppings =
-                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
-                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
-                            ]
-                        }
-                            |> Okonomiyaki.normalizeBaseOnToppingChange
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.ZenbuIri
-                ]
-            , describe "麺はそのまま引き継がれる"
-                [ test "Udon + イカ + エビ → ZenbuIri だが noodles はうどんのまま" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseUdonBase
-                        , quantity = 1
-                        , noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ]
-                        , toppings =
-                            [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
-                            , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
-                            ]
-                        }
-                            |> Okonomiyaki.normalizeBaseOnToppingChange
-                            |> .noodles
-                            |> List.map (\n -> ( n.noodle.kind, n.quantity ))
-                            |> Expect.equal [ ( Okonomiyaki.NoodleKindUdon, 2 ) ]
-                ]
-            , describe "イカのみ・エビのみでは切り替わらない"
-                [ test "Soba + イカのみ → 変化なし" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseSobaBase
-                        , quantity = 1
-                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
-                        , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
-                        }
-                            |> Okonomiyaki.normalizeBaseOnToppingChange
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.Soba
-                , test "Soba + エビのみ → 変化なし" <|
-                    \_ ->
-                        { base = Okonomiyaki.baseSobaBase
-                        , quantity = 1
-                        , noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ]
-                        , toppings = [ { topping = Okonomiyaki.toppingShrimp, quantity = 1 } ]
-                        }
-                            |> Okonomiyaki.normalizeBaseOnToppingChange
-                            |> .base
-                            |> .kind
-                            |> Expect.equal Okonomiyaki.Soba
                 ]
             ]
         ]
