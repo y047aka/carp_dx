@@ -11,9 +11,9 @@ suite : Test
 suite =
     describe "Menu"
         [ describe "お好み焼き（ベース）"
-            [ testMenuItem "野菜入り" 900 Okonomiyaki.baseYasai
-            , testMenuItem "そば入り" 1200 Okonomiyaki.baseSoba
-            , testMenuItem "うどん入り" 1200 Okonomiyaki.baseUdon
+            [ testMenuItem "野菜入り" 900 baseYasai
+            , testMenuItem "そば入り" 1200 baseSoba
+            , testMenuItem "うどん入り" 1200 baseUdon
             ]
         , describe "トッピング"
             [ testTopping "イカ天" 200 Okonomiyaki.toppingIkaten

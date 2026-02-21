@@ -1,5 +1,10 @@
 module MenuData exposing
     ( allMenuItems
+    , baseYasai
+    , baseSoba
+    , baseUdon
+    , baseZenbuIri
+    , menuItemToOkonomiyakiBase
     , grilledKaki
     , grilledHotate
     , grilledIka
@@ -10,7 +15,88 @@ module MenuData exposing
     )
 
 import Menu exposing (MenuCategory(..), MenuItem)
-import Okonomiyaki
+import Okonomiyaki exposing (OkonomiyakiBaseKind(..))
+
+
+
+-- お好み焼きベース
+
+
+{-| 野菜入りお好み焼き（デフォルト麺なし、900円）。 -}
+baseYasai : MenuItem
+baseYasai =
+    { id = "base-yasai"
+    , name = "野菜入り"
+    , price = 900
+    , category = Base
+    }
+
+
+{-| そば入りお好み焼き（1200円）。
+
+`price` にそば1玉分の料金が含まれている。
+
+-}
+baseSoba : MenuItem
+baseSoba =
+    { id = "base-soba"
+    , name = "そば入り"
+    , price = 1200
+    , category = Base
+    }
+
+
+{-| うどん入りお好み焼き（1200円）。
+
+`price` にうどん1玉分の料金が含まれている。
+
+-}
+baseUdon : MenuItem
+baseUdon =
+    { id = "base-udon"
+    , name = "うどん入り"
+    , price = 1200
+    , category = Base
+    }
+
+
+{-| 全部入りお好み焼き（ベース600円）。
+
+麺の種類を選ばず、イカ・エビのトッピング込みで麺1玉時に1700円になる。
+価格計算: basePrice(600) + noodlePrice(100 + 100×qty) + toppingsPrice(800)
+例: そばまたはうどん1玉(qty=2): 600 + (100 + 100×2) + 800 = 1700円
+
+-}
+baseZenbuIri : MenuItem
+baseZenbuIri =
+    { id = "base-zenbu-iri"
+    , name = "全部入り"
+    , price = 600
+    , category = Base
+    }
+
+
+{-| `MenuItem` から `OkonomiyakiBase` へ変換する。
+
+ベース用 `MenuItem` の `id` で検索し、対応する `OkonomiyakiBase` を返す。
+ベース以外の `MenuItem` は `Nothing` を返す。
+
+-}
+menuItemToOkonomiyakiBase : MenuItem -> Maybe Okonomiyaki.OkonomiyakiBase
+menuItemToOkonomiyakiBase menuItem =
+    baseMenuEntries
+        |> List.filter (\e -> e.menuItem.id == menuItem.id)
+        |> List.head
+        |> Maybe.map (\e -> Okonomiyaki.kindToBase e.baseKind)
+
+
+baseMenuEntries : List { menuItem : MenuItem, baseKind : OkonomiyakiBaseKind }
+baseMenuEntries =
+    [ { menuItem = baseYasai, baseKind = Yasai }
+    , { menuItem = baseSoba, baseKind = Soba }
+    , { menuItem = baseUdon, baseKind = Udon }
+    , { menuItem = baseZenbuIri, baseKind = ZenbuIri }
+    ]
 
 
 
@@ -91,7 +177,7 @@ drinkSoft =
 allMenuItems : List MenuItem
 allMenuItems =
     -- お好み焼き
-    (Okonomiyaki.allBases |> List.map .menuItem)
+    (baseMenuEntries |> List.map .menuItem)
         ++ [ -- 焼き物
              grilledKaki
            , grilledHotate

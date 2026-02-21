@@ -1,6 +1,5 @@
 module Okonomiyaki exposing
-    ( BaseEntry
-    , BaseOrderItem
+    ( BaseOrderItem
     , Noodle
     , NoodleAddition
     , NoodleKind(..)
@@ -9,13 +8,8 @@ module Okonomiyaki exposing
     , Topping
     , ToppingAddition
     , ToppingKind(..)
-    , allBases
     , allNoodles
     , allToppings
-    , baseYasai
-    , baseSoba
-    , baseUdon
-    , baseZenbuIri
     , baseYasaiBase
     , baseSobaBase
     , baseUdonBase
@@ -31,7 +25,7 @@ module Okonomiyaki exposing
     , toppingShrimp
     , noodleQuantityDisplay
     , isDefaultNoodleOf
-    , menuItemToOkonomiyakiBase
+    , kindToBase
     , initialBaseOrderItem
     , normalizeBaseOnNoodleAdd
     , normalizeBaseOnNoodleChange
@@ -46,21 +40,17 @@ module Okonomiyaki exposing
 
 ## 設計方針
 
-  - **責務分離**: `MenuItem` は UI のメニュー選択専用。
-    注文状態の表現には `OkonomiyakiBase` を使用する。
-  - **麺の独立**: 麺は `MenuItem` ではなく `Noodle` 型で表現する。
+  - **責務分離**: このモジュールは `MenuItem` に依存しない。
+    `MenuItem` → `OkonomiyakiBase` の変換は `MenuData` モジュールが担う。
+  - **麺の独立**: 麺は `Noodle` 型で表現する。
     麺の識別・価格計算・注文操作はすべてこのモジュール内で完結する。
   - **ベース** (`OkonomiyakiBase`) は `includedNoodleKind` を持つ場合があり、
     その麺1玉分の価格はベースの `basePrice` に含まれている。
   - **麺の数量** は内部的に「半玉単位」で管理する（quantity 2 = 1玉）。
     表示変換には `noodleQuantityDisplay` を使用する。
   - ベースと麺の整合性を保つ正規化関数は、麺の増減操作の直後に呼び出す。
-  - **境界変換**: `MenuItem` → `OkonomiyakiBase` への変換は
-    `menuItemToOkonomiyakiBase` の1箇所に局所化している。
 
 -}
-
-import Menu exposing (MenuCategory(..), MenuItem)
 
 
 -- 型定義
@@ -120,14 +110,7 @@ type alias Topping =
     }
 
 
-{-| `MenuItem` と `OkonomiyakiBase` のペア。`allBases` リストの要素。 -}
-type alias BaseEntry =
-    { menuItem : MenuItem
-    , base : OkonomiyakiBase
-    }
-
-
-{-| 麺のドメイン情報。`MenuItem` から独立したお好み焼きドメイン専用の型。
+{-| 麺のドメイン情報。お好み焼きドメイン専用の型。
 
   - `kind` は麺の種類（同一性の識別に使用）
   - `basePrice` は麺の入場料（最初の1玉に加算される固定料金）
@@ -179,63 +162,6 @@ type alias BaseOrderItem =
     }
 
 
--- マスタデータ：ベース
-
-
-{-| 野菜入りお好み焼き（デフォルト麺なし、900円）。 -}
-baseYasai : MenuItem
-baseYasai =
-    { id = "base-yasai"
-    , name = "野菜入り"
-    , price = 900
-    , category = Base
-    }
-
-
-{-| そば入りお好み焼き（1200円）。
-
-`price` にそば1玉分の料金が含まれている。
-
--}
-baseSoba : MenuItem
-baseSoba =
-    { id = "base-soba"
-    , name = "そば入り"
-    , price = 1200
-    , category = Base
-    }
-
-
-{-| うどん入りお好み焼き（1200円）。
-
-`price` にうどん1玉分の料金が含まれている。
-
--}
-baseUdon : MenuItem
-baseUdon =
-    { id = "base-udon"
-    , name = "うどん入り"
-    , price = 1200
-    , category = Base
-    }
-
-
-{-| 全部入りお好み焼き（ベース600円）。
-
-麺の種類を選ばず、イカ・エビのトッピング込みで麺1玉時に1700円になる。
-価格計算: basePrice(600) + noodlePrice(100 + 100×qty) + toppingsPrice(800)
-例: そばまたはうどん1玉(qty=2): 600 + (100 + 100×2) + 800 = 1700円
-
--}
-baseZenbuIri : MenuItem
-baseZenbuIri =
-    { id = "base-zenbu-iri"
-    , name = "全部入り"
-    , price = 600
-    , category = Base
-    }
-
-
 -- マスタデータ：OkonomiyakiBase
 
 
@@ -277,16 +203,6 @@ baseZenbuIriBase =
     , basePrice = 600
     , includedNoodleKind = Nothing
     }
-
-
-{-| 全ベースエントリの一覧。`MenuData.allMenuItems` のベース部分と `menuItemToOkonomiyakiBase` の両方に使用する。 -}
-allBases : List BaseEntry
-allBases =
-    [ { menuItem = baseYasai,    base = baseYasaiBase    }
-    , { menuItem = baseSoba,     base = baseSobaBase     }
-    , { menuItem = baseUdon,     base = baseUdonBase     }
-    , { menuItem = baseZenbuIri, base = baseZenbuIriBase }
-    ]
 
 
 -- マスタデータ：トッピング
@@ -412,18 +328,21 @@ isDefaultNoodleOf noodle base =
     base.includedNoodleKind == Just noodle.kind
 
 
-{-| `MenuItem` から `OkonomiyakiBase` へ変換する。
+{-| `OkonomiyakiBaseKind` から `OkonomiyakiBase` を取得する。 -}
+kindToBase : OkonomiyakiBaseKind -> OkonomiyakiBase
+kindToBase kind =
+    case kind of
+        Yasai ->
+            baseYasaiBase
 
-`allBases` リストを検索し、`id` が一致するエントリの `base` を返す。
-`allBases` に存在しない `MenuItem` は `Nothing` を返す。
+        Soba ->
+            baseSobaBase
 
--}
-menuItemToOkonomiyakiBase : MenuItem -> Maybe OkonomiyakiBase
-menuItemToOkonomiyakiBase menuItem =
-    allBases
-        |> List.filter (\e -> e.menuItem.id == menuItem.id)
-        |> List.head
-        |> Maybe.map .base
+        Udon ->
+            baseUdonBase
+
+        ZenbuIri ->
+            baseZenbuIriBase
 
 
 -- 構築・正規化・計算

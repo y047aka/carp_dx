@@ -66,18 +66,23 @@ update msg model =
         AddMenuItem menuItem ->
             case menuItem.category of
                 Menu.Base ->
-                    let
-                        newOrder =
-                            Order.addBaseItem menuItem model.currentOrder
+                    case MenuData.menuItemToOkonomiyakiBase menuItem of
+                        Just base ->
+                            let
+                                newOrder =
+                                    Order.addBaseItem base model.currentOrder
 
-                        lastIndex =
-                            List.length newOrder.items - 1
-                    in
-                    { model
-                        | currentOrder = newOrder
-                        , editingBaseIndex = Just lastIndex
-                        , isAddingNewBase = True
-                    }
+                                lastIndex =
+                                    List.length newOrder.items - 1
+                            in
+                            { model
+                                | currentOrder = newOrder
+                                , editingBaseIndex = Just lastIndex
+                                , isAddingNewBase = True
+                            }
+
+                        Nothing ->
+                            model
 
                 Menu.Topping ->
                     model
@@ -228,7 +233,7 @@ menuItemCard item =
     let
         priceText =
             if item.category == Menu.Base then
-                case Okonomiyaki.menuItemToOkonomiyakiBase item of
+                case MenuData.menuItemToOkonomiyakiBase item of
                     Just base ->
                         "¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal (Okonomiyaki.initialBaseOrderItem base))
 
