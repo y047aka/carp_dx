@@ -82,8 +82,7 @@ type BaseKind
 
 
 type alias BaseInfo =
-    { kind : BaseKind
-    , name : String
+    { name : String
     , basePrice : Int
     , includedNoodleKind : Maybe NoodleKind
     }
@@ -160,8 +159,7 @@ type alias Okonomiyaki =
 {-| 野菜入りのベースドメイン情報。 -}
 baseYasaiBase : BaseInfo
 baseYasaiBase =
-    { kind = Yasai
-    , name = "野菜入り"
+    { name = "野菜入り"
     , basePrice = 900
     , includedNoodleKind = Nothing
     }
@@ -170,8 +168,7 @@ baseYasaiBase =
 {-| そば入りのベースドメイン情報（そば1玉分込み）。 -}
 baseSobaBase : BaseInfo
 baseSobaBase =
-    { kind = Soba
-    , name = "そば入り"
+    { name = "そば入り"
     , basePrice = 1200
     , includedNoodleKind = Just NoodleKindSoba
     }
@@ -180,8 +177,7 @@ baseSobaBase =
 {-| うどん入りのベースドメイン情報（うどん1玉分込み）。 -}
 baseUdonBase : BaseInfo
 baseUdonBase =
-    { kind = Udon
-    , name = "うどん入り"
+    { name = "うどん入り"
     , basePrice = 1200
     , includedNoodleKind = Just NoodleKindUdon
     }
@@ -190,8 +186,7 @@ baseUdonBase =
 {-| 全部入りのベースドメイン情報（イカ・エビ込み、麺は別途追加）。 -}
 baseZenbuIriBase : BaseInfo
 baseZenbuIriBase =
-    { kind = ZenbuIri
-    , name = "全部入り"
+    { name = "全部入り"
     , basePrice = 600
     , includedNoodleKind = Nothing
     }
