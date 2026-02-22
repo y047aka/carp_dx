@@ -347,7 +347,7 @@ baseOrderView index baseOrderItem =
             [ div [ class "flex-1 min-w-[120px]" ]
                 [ div [ class "text-lg font-bold" ] [ text (Okonomiyaki.baseName okonomiyaki) ]
                 , div [ class "text-sm text-base-content/70" ]
-                    [ text ("¥" ++ String.fromInt (Okonomiyaki.basePrice okonomiyaki) ++ " × " ++ String.fromInt quantity)
+                    [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal okonomiyaki) ++ " × " ++ String.fromInt quantity)
                     ]
                 ]
             , button

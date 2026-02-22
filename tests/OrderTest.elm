@@ -266,21 +266,21 @@ suite =
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.Soba
                         |> Order.calculateTotal
-                        -- baseSoba.price=1200（defaultNoodle=soba 1玉分込み）
+                        -- 900 + (100 + 100×2)（そば1玉）= 1200
                         |> Expect.equal 1200
             , test "うどん入り単体は1200円" <|
                 \_ ->
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.Udon
                         |> Order.calculateTotal
+                        -- 900 + (100 + 100×2)（うどん1玉）= 1200
                         |> Expect.equal 1200
             , test "そば入り＋そば0.5玉追加は1300円（そば1.5玉）" <|
                 \_ ->
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.Soba
                         |> Order.incrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        -- noodles の soba qty: 2 → 3（1.5玉）、defaultNoodle 1玉分除外 → extra=1
-                        -- 1200 + 100×1 = 1300
+                        -- 900 + (100 + 100×3)（そば1.5玉）= 1300
                         |> Order.calculateTotal
                         |> Expect.equal 1300
             , test "そば入り＋イカ天は1400円" <|
@@ -288,7 +288,7 @@ suite =
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.Soba
                         |> Order.addToppingToLastBase Okonomiyaki.toppingIkaten
-                        -- 1200 + 200 = 1400
+                        -- 900 + (100 + 100×2) + 200 = 1400
                         |> Order.calculateTotal
                         |> Expect.equal 1400
             , test "そば入りのそばを全部減らすとbaseYasaiに切り替わる" <|
@@ -300,7 +300,7 @@ suite =
                         -- qty: 2 → 1 → 0（削除）
                         |> Order.normalizeBase 0
                         |> Order.calculateTotal
-                        -- baseYasai: 900
+                        -- 900（麺なし）
                         |> Expect.equal 900
             ]
         ]

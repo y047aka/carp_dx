@@ -12,7 +12,6 @@ module Okonomiyaki exposing
     , allNoodles
     , allToppings
     , baseName
-    , basePrice
     , calculateTotal
     , decrementNoodle
     , init
@@ -43,8 +42,8 @@ module Okonomiyaki exposing
     `MenuItem` ↔ `BaseKind` の変換は `MenuData` モジュールが担う。
   - **麺の独立**: 麺は `Noodle` 型で表現する。
     麺の識別・価格計算・注文操作はすべてこのモジュール内で完結する。
-  - **ベース**: 各ベースは込み麺を持つ場合があり、その麺1玉分の価格はベース価格に含まれている。
-    ベース情報へのアクセスには `baseName` と `basePrice` ヘルパー関数を使用する。
+  - **ベース**: 各ベースは込み麺を持つ場合がある。
+    ベース情報へのアクセスには `baseName` ヘルパー関数を使用する。
   - **麺の数量** は内部的に「半玉単位」で管理する（quantity 2 = 1玉）。
     表示変換には `noodleQuantityDisplay` を使用する。
   - `normalizeBase` は麺・トッピングの状態からベースを一意に決定する。
@@ -83,7 +82,6 @@ type BaseKind
 
 type alias BaseInfo =
     { name : String
-    , basePrice : Int
     , includedNoodleKind : Maybe NoodleKind
     }
 
@@ -143,7 +141,7 @@ type alias NoodleAddition =
 
 `base` にベースの種類（`BaseKind`）を持ち、
 `noodles` と `toppings` にそれぞれの追加オプションを格納する。
-ベースの詳細情報（名前・価格等）は `baseName` と `basePrice` で取得できる。
+ベース名は `baseName` で取得できる。
 
 -}
 type alias Okonomiyaki =
@@ -160,7 +158,6 @@ type alias Okonomiyaki =
 baseYasaiBase : BaseInfo
 baseYasaiBase =
     { name = "野菜入り"
-    , basePrice = 900
     , includedNoodleKind = Nothing
     }
 
@@ -169,7 +166,6 @@ baseYasaiBase =
 baseSobaBase : BaseInfo
 baseSobaBase =
     { name = "そば入り"
-    , basePrice = 1200
     , includedNoodleKind = Just NoodleKindSoba
     }
 
@@ -178,7 +174,6 @@ baseSobaBase =
 baseUdonBase : BaseInfo
 baseUdonBase =
     { name = "うどん入り"
-    , basePrice = 1200
     , includedNoodleKind = Just NoodleKindUdon
     }
 
@@ -187,7 +182,6 @@ baseUdonBase =
 baseZenbuIriBase : BaseInfo
 baseZenbuIriBase =
     { name = "全部入り"
-    , basePrice = 600
     , includedNoodleKind = Nothing
     }
 
@@ -321,12 +315,6 @@ baseName okonomiyaki =
     (kindToBase okonomiyaki.base).name
 
 
-{-| お好み焼きのベース価格を取得する。 -}
-basePrice : Okonomiyaki -> Int
-basePrice okonomiyaki =
-    (kindToBase okonomiyaki.base).basePrice
-
-
 -- `BaseKind` からマスタデータ `BaseInfo` を取得する内部関数。
 kindToBase : BaseKind -> BaseInfo
 kindToBase kind =
@@ -434,68 +422,58 @@ normalizeBase baseItem =
 
 {-| お好み焼き1枚あたりの金額を計算する。
 
-計算式：`ベース価格 + 麺追加料金 + トッピング料金`
+計算式：`基本料金（900円） + 麺料金 + トッピング料金 - 割引`
 
 **麺の料金ルール：**
 
-  - `includedNoodleKind` を持つベースは、その麺1玉分（`quantity = 2`）の料金が
-    すでに `basePrice` に含まれているため、超過分のみを加算する。
-  - `includedNoodleKind` を持たないベース（`Yasai`・`ZenbuIri`）に麺を追加した場合は、
-    入場料（100円）と半玉単価（100円）× quantity を加算する。
+  - 麺がなければ 0円。
+  - 麺がある場合：入場料（100円）は全麺合計で1回だけ加算、半玉単価（100円）× 合計quantity。
+    例：そば1玉（quantity=2）→ 100 + 100×2 = 300円。
+    例：そば1玉 + うどん1玉（合計quantity=4）→ 100 + 100×4 = 500円。
+
+**割引ルール：**
+
+  - イカとエビが同時にトッピングされている場合、300円割引を適用する。
 
 -}
 calculateTotal : Okonomiyaki -> Int
 calculateTotal baseItem =
     let
-        base =
-            kindToBase baseItem.base
+        baseOkonomiyakiPrice =
+            900
 
-        basePriceValue =
-            base.basePrice
+        totalNoodleQuantity =
+            baseItem.noodles
+                |> List.map .quantity
+                |> List.sum
 
         noodlePrice =
-            let
-                includedNoodleKind =
-                    base.includedNoodleKind
+            if totalNoodleQuantity == 0 then
+                0
 
-                extraNoodleQuantity =
-                    baseItem.noodles
-                        |> List.map
-                            (\n ->
-                                case includedNoodleKind of
-                                    Just includedKind ->
-                                        if n.noodle.kind == includedKind then
-                                            -- 1玉(qty=2)分はベース price に含まれるため差分を計算
-                                            -- 0.5玉(qty=1)なら -1 → 100円の割引になる
-                                            n.quantity - 2
-
-                                        else
-                                            n.quantity
-
-                                    Nothing ->
-                                        n.quantity
-                            )
-                        |> List.sum
-            in
-            case includedNoodleKind of
-                Nothing ->
-                    if extraNoodleQuantity == 0 then
-                        0
-
-                    else
-                        -- includedNoodle なし：入場料（100円）+ 半玉単価 × quantity
-                        100 + 100 * extraNoodleQuantity
-
-                Just _ ->
-                    -- includedNoodle の基本料金はベース価格に含まれるため、差分のみ加算（負なら割引）
-                    100 * extraNoodleQuantity
+            else
+                -- 入場料（100円）は麺全体で1回だけ加算、半玉単価（100円）× 合計quantity
+                100 + 100 * totalNoodleQuantity
 
         toppingsPrice =
             baseItem.toppings
                 |> List.map (\t -> t.topping.price * t.quantity)
                 |> List.sum
+
+        hasSquid =
+            List.any (\t -> t.topping.kind == ToppingKindSquid) baseItem.toppings
+
+        hasShrimp =
+            List.any (\t -> t.topping.kind == ToppingKindShrimp) baseItem.toppings
+
+        zenbuIriDiscount =
+            if hasSquid && hasShrimp then
+                300
+
+            else
+                0
     in
-    basePriceValue + noodlePrice + toppingsPrice
+    baseOkonomiyakiPrice + noodlePrice + toppingsPrice - zenbuIriDiscount
 
 
 -- 操作
@@ -583,5 +561,3 @@ toggleTopping toppingItem item =
 
     else
         addTopping toppingItem item
-
-

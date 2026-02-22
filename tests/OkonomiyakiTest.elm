@@ -269,47 +269,30 @@ suite =
                 ]
             ]
         , describe "calculateTotal"
-            [ describe "ベースのみ（麺・トッピングなし）"
-                [ test "Yasai = 900円" <|
+            [ describe "麺なし"
+                [ test "Yasai（麺なし）= 900円" <|
                     \_ ->
                         { base = Okonomiyaki.Yasai, noodles = [], toppings = [] }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 900
-                , test "Soba = 1200円（そば1玉分込み）" <|
-                    \_ ->
-                        { base = Okonomiyaki.Soba, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ], toppings = [] }
-                            |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1200
-                , test "Udon = 1200円（うどん1玉分込み）" <|
-                    \_ ->
-                        { base = Okonomiyaki.Udon, noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = 2 } ], toppings = [] }
-                            |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1200
                 ]
-            , describe "込み麺なしのベース（Yasai）に麺を追加"
-                [ test "そば0.5玉追加（qty=1）: 900 + (100 + 100×1) = 1100円" <|
+            , describe "麺あり: 900 + 入場料(100) + 半玉単価(100)×quantity"
+                [ test "そば0.5玉（qty=1）: 900 + (100 + 100×1) = 1100円" <|
                     \_ ->
                         { base = Okonomiyaki.Yasai, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ], toppings = [] }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1100
-                , test "そば1玉追加（qty=2）: 900 + (100 + 100×2) = 1200円" <|
+                , test "そば1玉（qty=2）: 900 + (100 + 100×2) = 1200円" <|
                     \_ ->
                         { base = Okonomiyaki.Yasai, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 2 } ], toppings = [] }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1200
-                ]
-            , describe "込み麺ありのベース（Soba）に麺を追加・減量"
-                [ test "そば0.5玉（qty=1）: 1200 - 100×1 = 1100円（1玉分は price 込みなので差引）" <|
-                    \_ ->
-                        { base = Okonomiyaki.Soba, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 1 } ], toppings = [] }
-                            |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1100
-                , test "そば1.5玉（qty=3）: 1200 + 100×1 = 1300円（1玉分は price 込み）" <|
+                , test "そば1.5玉（qty=3）: 900 + (100 + 100×3) = 1300円" <|
                     \_ ->
                         { base = Okonomiyaki.Soba, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 3 } ], toppings = [] }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1300
-                , test "そば2玉（qty=4）: 1200 + 100×2 = 1400円" <|
+                , test "そば2玉（qty=4）: 900 + (100 + 100×4) = 1400円" <|
                     \_ ->
                         { base = Okonomiyaki.Soba, noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = 4 } ], toppings = [] }
                             |> Okonomiyaki.calculateTotal
