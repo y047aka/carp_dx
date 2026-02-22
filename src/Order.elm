@@ -1,7 +1,7 @@
 module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, normalizeBase)
 
 import Menu exposing (MenuItem)
-import Okonomiyaki exposing (BaseOrderItem, Noodle, Topping, ToppingKind)
+import Okonomiyaki exposing (Noodle, Okonomiyaki, Topping)
 
 
 -- 独立した商品（焼き物、飲み物）
@@ -13,7 +13,7 @@ type alias StandaloneOrderItem =
 
 -- 注文アイテムの型（Sum Type）
 type OrderItemType
-    = BaseOrder BaseOrderItem
+    = BaseOrder Okonomiyaki
     | StandaloneOrder StandaloneOrderItem
 
 
@@ -29,10 +29,55 @@ emptyOrder =
     { items = [] }
 
 
+-- ヘルパー：指定インデックスのお好み焼きに変換を適用する
+updateBaseItemAt : Int -> (Okonomiyaki -> Okonomiyaki) -> Order -> Order
+updateBaseItemAt index transform order =
+    { order
+        | items =
+            List.indexedMap
+                (\i item ->
+                    if i == index then
+                        case item of
+                            BaseOrder baseItem ->
+                                BaseOrder (transform baseItem)
+
+                            _ ->
+                                item
+
+                    else
+                        item
+                )
+                order.items
+    }
+
+
+-- ヘルパー：指定インデックスのお好み焼きに変換を適用し、Nothing なら削除する
+updateOrRemoveBaseItemAt : Int -> (Okonomiyaki -> Maybe Okonomiyaki) -> Order -> Order
+updateOrRemoveBaseItemAt index transform order =
+    { order
+        | items =
+            List.indexedMap
+                (\i item ->
+                    if i == index then
+                        case item of
+                            BaseOrder baseItem ->
+                                transform baseItem |> Maybe.map BaseOrder
+
+                            _ ->
+                                Just item
+
+                    else
+                        Just item
+                )
+                order.items
+                |> List.filterMap identity
+    }
+
+
 -- 新しいお好み焼きを追加
 addBaseItem : Okonomiyaki.OkonomiyakiBase -> Order -> Order
 addBaseItem base order =
-    { order | items = order.items ++ [ BaseOrder (Okonomiyaki.initialBaseOrderItem base) ] }
+    { order | items = order.items ++ [ BaseOrder (Okonomiyaki.init base) ] }
 
 
 -- 独立商品（焼き物・飲み物）を追加または数量を増やす
@@ -103,64 +148,17 @@ getLastBaseItemIndex order =
         |> List.head
 
 
--- 最後のお好み焼きに麺を追加（既存の麺を置き換え）
+-- 最後のお好み焼きに麺を追加し、ベースを正規化する
 addNoodleToLastBase : Noodle -> Order -> Order
 addNoodleToLastBase noodle order =
     case getLastBaseItemIndex order of
         Just idx ->
-            addNoodleToBase idx noodle order
+            order
+                |> updateBaseItemAt idx (Okonomiyaki.addNoodle noodle)
+                |> normalizeBase idx
 
         Nothing ->
-            -- お好み焼きがない場合は何もしない
             order
-
-
--- 特定インデックスのお好み焼きに麺を追加（既存あれば数量+1、なければ新規追加）
-addNoodleToBase : Int -> Noodle -> Order -> Order
-addNoodleToBase index noodle order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == index then
-                        case item of
-                            BaseOrder baseItem ->
-                                let
-                                    existingNoodle =
-                                        baseItem.noodles
-                                            |> List.filter (\n -> n.noodle.kind == noodle.kind)
-                                            |> List.head
-                                in
-                                case existingNoodle of
-                                    Just _ ->
-                                        BaseOrder
-                                            { baseItem
-                                                | noodles =
-                                                    List.map
-                                                        (\n ->
-                                                            if n.noodle.kind == noodle.kind then
-                                                                { n | quantity = n.quantity + 1 }
-
-                                                            else
-                                                                n
-                                                        )
-                                                        baseItem.noodles
-                                            }
-
-                                    Nothing ->
-                                        BaseOrder
-                                            { baseItem
-                                                | noodles = baseItem.noodles ++ [ { noodle = noodle, quantity = 2 } ]
-                                            }
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-    }
 
 
 -- 最後のお好み焼きにトッピングを追加
@@ -168,260 +166,40 @@ addToppingToLastBase : Topping -> Order -> Order
 addToppingToLastBase toppingItem order =
     case getLastBaseItemIndex order of
         Just idx ->
-            addToppingToBase idx toppingItem order
+            updateBaseItemAt idx (Okonomiyaki.addTopping toppingItem) order
 
         Nothing ->
             order
 
 
--- 特定インデックスのお好み焼きにトッピングを追加
-addToppingToBase : Int -> Topping -> Order -> Order
-addToppingToBase index toppingItem order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == index then
-                        case item of
-                            BaseOrder baseItem ->
-                                let
-                                    existingTopping =
-                                        baseItem.toppings
-                                            |> List.filter (\t -> t.topping.kind == toppingItem.kind)
-                                            |> List.head
-                                in
-                                case existingTopping of
-                                    Just _ ->
-                                        -- 既存のトッピングがあれば数量+1
-                                        BaseOrder
-                                            { baseItem
-                                                | toppings =
-                                                    List.map
-                                                        (\t ->
-                                                            if t.topping.kind == toppingItem.kind then
-                                                                { t | quantity = t.quantity + 1 }
-
-                                                            else
-                                                                t
-                                                        )
-                                                        baseItem.toppings
-                                            }
-
-                                    Nothing ->
-                                        -- 新しいトッピングを追加
-                                        BaseOrder
-                                            { baseItem
-                                                | toppings = baseItem.toppings ++ [ { topping = toppingItem, quantity = 1 } ]
-                                            }
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-    }
-
-
--- 特定インデックスのお好み焼きからトッピングを削除
-removeToppingFromBase : Int -> ToppingKind -> Order -> Order
-removeToppingFromBase index toppingKind order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == index then
-                        case item of
-                            BaseOrder baseItem ->
-                                BaseOrder
-                                    { baseItem
-                                        | toppings =
-                                            List.filter
-                                                (\t -> t.topping.kind /= toppingKind)
-                                                baseItem.toppings
-                                    }
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-    }
-
-
 -- トッピングのトグル（未選択なら追加、選択済みなら削除）
 toggleTopping : Int -> Topping -> Order -> Order
 toggleTopping index toppingItem order =
-    let
-        hasTopping =
-            order.items
-                |> List.drop index
-                |> List.head
-                |> Maybe.andThen
-                    (\item ->
-                        case item of
-                            BaseOrder baseItem ->
-                                if List.any (\t -> t.topping.kind == toppingItem.kind) baseItem.toppings then
-                                    Just True
-
-                                else
-                                    Nothing
-
-                            _ ->
-                                Nothing
-                    )
-    in
-    case hasTopping of
-        Just True ->
-            removeToppingFromBase index toppingItem.kind order
-
-        _ ->
-            addToppingToBase index toppingItem order
+    updateBaseItemAt index (Okonomiyaki.toggleTopping toppingItem) order
 
 
 -- お好み焼きの数量を増やす
 incrementBaseQuantity : Int -> Order -> Order
 incrementBaseQuantity index order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == index then
-                        case item of
-                            BaseOrder baseItem ->
-                                BaseOrder { baseItem | quantity = baseItem.quantity + 1 }
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-    }
+    updateBaseItemAt index Okonomiyaki.incrementQuantity order
 
 
 -- お好み焼きの数量を減らす（0になったら削除）
 decrementBaseQuantity : Int -> Order -> Order
 decrementBaseQuantity index order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == index then
-                        case item of
-                            BaseOrder baseItem ->
-                                BaseOrder { baseItem | quantity = baseItem.quantity - 1 }
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-                |> List.filterMap
-                    (\item ->
-                        case item of
-                            BaseOrder baseItem ->
-                                if baseItem.quantity > 0 then
-                                    Just item
-
-                                else
-                                    Nothing
-
-                            _ ->
-                                Just item
-                    )
-    }
+    updateOrRemoveBaseItemAt index Okonomiyaki.decrementQuantity order
 
 
--- 麺の数量を増やす（0.5玉単位、内部的に+1、新規追加にも対応）
+-- 麺の数量を増やす（0.5玉単位、新規追加にも対応）
 incrementNoodleQuantity : Int -> Noodle -> Order -> Order
 incrementNoodleQuantity baseIndex noodle order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == baseIndex then
-                        case item of
-                            BaseOrder baseItem ->
-                                let
-                                    existingNoodle =
-                                        baseItem.noodles
-                                            |> List.filter (\n -> n.noodle.kind == noodle.kind)
-                                            |> List.head
-                                in
-                                case existingNoodle of
-                                    Just _ ->
-                                        -- 既存の麺があれば数量+1（0.5玉増加）
-                                        BaseOrder
-                                            { baseItem
-                                                | noodles =
-                                                    List.map
-                                                        (\n ->
-                                                            if n.noodle.kind == noodle.kind then
-                                                                { n | quantity = n.quantity + 1 }
-
-                                                            else
-                                                                n
-                                                        )
-                                                        baseItem.noodles
-                                            }
-
-                                    Nothing ->
-                                        -- 新規麺を追加（quantity = 2で初期化 = 1玉）
-                                        BaseOrder
-                                            { baseItem
-                                                | noodles = baseItem.noodles ++ [ { noodle = noodle, quantity = 2 } ]
-                                            }
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-    }
+    updateBaseItemAt baseIndex (Okonomiyaki.addNoodle noodle) order
 
 
--- 麺の数量を減らす（0.5玉単位、内部的に-1。0になったら削除）
+-- 麺の数量を減らす（0.5玉単位、0になったら削除）
 decrementNoodleQuantity : Int -> Noodle -> Order -> Order
 decrementNoodleQuantity baseIndex noodle order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == baseIndex then
-                        case item of
-                            BaseOrder baseItem ->
-                                BaseOrder
-                                    { baseItem
-                                        | noodles =
-                                            List.map
-                                                (\n ->
-                                                    if n.noodle.kind == noodle.kind then
-                                                        { n | quantity = max 0 (n.quantity - 1) }
-
-                                                    else
-                                                        n
-                                                )
-                                                baseItem.noodles
-                                                |> List.filter (\n -> n.quantity > 0)
-                                    }
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-    }
+    updateBaseItemAt baseIndex (Okonomiyaki.decrementNoodle noodle) order
 
 
 -- 独立商品の数量を増やす
@@ -485,7 +263,7 @@ calculateTotal order =
             (\item ->
                 case item of
                     BaseOrder baseItem ->
-                        Okonomiyaki.calculateBaseItemTotal baseItem
+                        Okonomiyaki.calculateTotal baseItem
 
                     StandaloneOrder standaloneItem ->
                         standaloneItem.menuItem.price * standaloneItem.quantity
@@ -496,20 +274,4 @@ calculateTotal order =
 -- 麺・トッピング操作後に呼ぶ。ベースを麺・トッピングの状態から一意に決定する
 normalizeBase : Int -> Order -> Order
 normalizeBase index order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == index then
-                        case item of
-                            BaseOrder baseItem ->
-                                BaseOrder (Okonomiyaki.normalizeBase baseItem)
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-    }
+    updateBaseItemAt index Okonomiyaki.normalizeBase order

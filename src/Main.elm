@@ -6,7 +6,7 @@ import Html.Attributes exposing (checked, class, classList, disabled, type_)
 import Html.Events exposing (onClick)
 import Menu exposing (MenuCategory, MenuItem)
 import MenuData
-import Okonomiyaki exposing (BaseOrderItem, Noodle, NoodleAddition, Topping, ToppingAddition)
+import Okonomiyaki exposing (Noodle, NoodleAddition, Okonomiyaki, Topping, ToppingAddition)
 import Order exposing (Order, OrderItemType(..), StandaloneOrderItem)
 
 
@@ -235,7 +235,7 @@ menuItemCard item =
             if item.category == Menu.Base then
                 case MenuData.menuItemToOkonomiyakiBase item of
                     Just base ->
-                        "¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal (Okonomiyaki.initialBaseOrderItem base))
+                        "¥" ++ String.fromInt (Okonomiyaki.calculateTotal (Okonomiyaki.init base))
 
                     Nothing ->
                         "¥?"
@@ -252,7 +252,7 @@ menuItemCard item =
         ]
 
 
-getBaseItemByIndex : Int -> Order -> Maybe BaseOrderItem
+getBaseItemByIndex : Int -> Order -> Maybe Okonomiyaki
 getBaseItemByIndex index order =
     order.items
         |> List.drop index
@@ -332,7 +332,7 @@ noodlePrice noodleAddition =
     n.basePrice + n.pricePerHalfBall * noodleAddition.quantity
 
 
-baseOrderView : Int -> BaseOrderItem -> Html Msg
+baseOrderView : Int -> Okonomiyaki -> Html Msg
 baseOrderView index baseItem =
     div [ class "mb-4 p-3 bg-base-200 rounded-lg" ]
         [ -- お好み焼き本体
@@ -390,7 +390,7 @@ baseOrderView index baseItem =
         , div [ class "flex justify-between pt-2 mt-2 border-t border-base-300" ]
             [ span [ class "font-semibold" ] [ text "小計" ]
             , span [ class "font-bold text-primary" ]
-                [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal baseItem))
+                [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal baseItem))
                 ]
             ]
         ]
@@ -509,7 +509,7 @@ editBaseModal model =
                                     , div [ class "flex items-center justify-between pt-3 border-t border-base-300" ]
                                         [ span [ class "text-sm font-semibold text-base-content/70" ] [ text "小計" ]
                                         , span [ class "text-2xl font-bold text-primary" ]
-                                            [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateBaseItemTotal baseItem)) ]
+                                            [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal baseItem)) ]
                                         ]
                                     ]
 
@@ -539,7 +539,7 @@ editBaseModal model =
                         ]
 
 
-noodleMenuItem : Int -> BaseOrderItem -> Noodle -> Html Msg
+noodleMenuItem : Int -> Okonomiyaki -> Noodle -> Html Msg
 noodleMenuItem baseIndex baseOrderItem noodle =
     let
         -- noodles リスト内の数量

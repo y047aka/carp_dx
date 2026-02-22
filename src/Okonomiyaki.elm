@@ -1,40 +1,47 @@
 module Okonomiyaki exposing
-    ( BaseOrderItem
-    , Noodle
+    ( Noodle
     , NoodleAddition
     , NoodleKind(..)
+    , Okonomiyaki
     , OkonomiyakiBase
     , OkonomiyakiBaseKind(..)
     , Topping
     , ToppingAddition
     , ToppingKind(..)
+    , addNoodle
+    , addTopping
     , allNoodles
     , allToppings
     , baseYasaiBase
     , baseSobaBase
     , baseUdonBase
     , baseZenbuIriBase
+    , calculateTotal
+    , decrementNoodle
+    , decrementQuantity
+    , incrementQuantity
+    , init
+    , isDefaultNoodleOf
+    , kindToBase
+    , noodleQuantityDisplay
     , noodleSoba
     , noodleUdon
+    , normalizeBase
+    , removeTopping
+    , toggleTopping
+    , toppingCheese
+    , toppingGarlic
     , toppingIkaten
     , toppingMochi
     , toppingNegi
-    , toppingGarlic
-    , toppingCheese
-    , toppingSquid
     , toppingShrimp
-    , noodleQuantityDisplay
-    , isDefaultNoodleOf
-    , kindToBase
-    , initialBaseOrderItem
-    , normalizeBase
-    , calculateBaseItemTotal
+    , toppingSquid
     )
 
 {-| お好み焼きドメインのモジュール。
 
 お好み焼きのベース・麺・トッピングに関する型定義、マスタデータ、および
-`BaseOrderItem` の構築・計算・正規化ロジックを提供する。
+`Okonomiyaki` の構築・計算・正規化ロジックを提供する。
 
 ## 設計方針
 
@@ -146,14 +153,14 @@ type alias NoodleAddition =
     }
 
 
-{-| お好み焼き1件分の注文アイテム。
+{-| お好み焼き1枚の完全な構成。
 
 `base` にベースのドメイン情報（`OkonomiyakiBase`）を持ち、
 `noodles` と `toppings` にそれぞれの追加オプションを格納する。
 `quantity` はこのお好み焼き自体の枚数を表す。
 
 -}
-type alias BaseOrderItem =
+type alias Okonomiyaki =
     { base : OkonomiyakiBase
     , quantity : Int
     , noodles : List NoodleAddition
@@ -347,15 +354,15 @@ kindToBase kind =
 -- 構築・正規化・計算
 
 
-{-| `OkonomiyakiBase` から初期 `BaseOrderItem` を生成する。
+{-| `OkonomiyakiBase` から初期 `Okonomiyaki` を生成する。
 
 `includedNoodleKind` を持つベースの場合、`noodles` に1玉（`quantity = 2`）をセットする。
 `includedNoodleKind` を持たない `Yasai` の場合、`noodles` は空になる。
 `ZenbuIri` の場合、`noodles` にそば1玉をセットし、`toppings` にイカ・エビをセットする。
 
 -}
-initialBaseOrderItem : OkonomiyakiBase -> BaseOrderItem
-initialBaseOrderItem base =
+init : OkonomiyakiBase -> Okonomiyaki
+init base =
     let
         initialNoodles =
             case base.includedNoodleKind of
@@ -402,7 +409,7 @@ initialBaseOrderItem base =
 麺・トッピングのいずれの操作後にも、この関数を1つ呼ぶだけでベースの整合性が保たれる。
 
 -}
-normalizeBase : BaseOrderItem -> BaseOrderItem
+normalizeBase : Okonomiyaki -> Okonomiyaki
 normalizeBase baseItem =
     let
         hasSquid =
@@ -430,7 +437,7 @@ normalizeBase baseItem =
     { baseItem | base = newBase }
 
 
-{-| `BaseOrderItem` の小計を計算する。
+{-| お好み焼きの小計を計算する。
 
 計算式：`(ベース価格 + 麺追加料金 + トッピング料金) × 枚数`
 
@@ -442,8 +449,8 @@ normalizeBase baseItem =
     入場料（100円）と半玉単価（100円）× quantity を加算する。
 
 -}
-calculateBaseItemTotal : BaseOrderItem -> Int
-calculateBaseItemTotal baseItem =
+calculateTotal : Okonomiyaki -> Int
+calculateTotal baseItem =
     let
         basePrice =
             baseItem.base.basePrice
@@ -491,3 +498,110 @@ calculateBaseItemTotal baseItem =
                 |> List.sum
     in
     (basePrice + noodlePrice + toppingsPrice) * baseItem.quantity
+
+
+-- 操作
+
+
+{-| 麺を追加する。既存の同種麺があれば半玉（quantity+1）追加、なければ1玉（quantity=2）で新規追加する。 -}
+addNoodle : Noodle -> Okonomiyaki -> Okonomiyaki
+addNoodle noodle item =
+    let
+        hasExisting =
+            List.any (\n -> n.noodle.kind == noodle.kind) item.noodles
+    in
+    if hasExisting then
+        { item
+            | noodles =
+                List.map
+                    (\n ->
+                        if n.noodle.kind == noodle.kind then
+                            { n | quantity = n.quantity + 1 }
+
+                        else
+                            n
+                    )
+                    item.noodles
+        }
+
+    else
+        { item | noodles = item.noodles ++ [ { noodle = noodle, quantity = 2 } ] }
+
+
+{-| 麺を半玉（quantity-1）減らす。0以下になったら削除する。 -}
+decrementNoodle : Noodle -> Okonomiyaki -> Okonomiyaki
+decrementNoodle noodle item =
+    { item
+        | noodles =
+            List.map
+                (\n ->
+                    if n.noodle.kind == noodle.kind then
+                        { n | quantity = max 0 (n.quantity - 1) }
+
+                    else
+                        n
+                )
+                item.noodles
+                |> List.filter (\n -> n.quantity > 0)
+    }
+
+
+{-| トッピングを追加する。既存の同種があれば quantity+1、なければ quantity=1 で新規追加する。 -}
+addTopping : Topping -> Okonomiyaki -> Okonomiyaki
+addTopping toppingItem item =
+    let
+        hasExisting =
+            List.any (\t -> t.topping.kind == toppingItem.kind) item.toppings
+    in
+    if hasExisting then
+        { item
+            | toppings =
+                List.map
+                    (\t ->
+                        if t.topping.kind == toppingItem.kind then
+                            { t | quantity = t.quantity + 1 }
+
+                        else
+                            t
+                    )
+                    item.toppings
+        }
+
+    else
+        { item | toppings = item.toppings ++ [ { topping = toppingItem, quantity = 1 } ] }
+
+
+{-| 指定種類のトッピングを削除する。 -}
+removeTopping : ToppingKind -> Okonomiyaki -> Okonomiyaki
+removeTopping toppingKind item =
+    { item | toppings = List.filter (\t -> t.topping.kind /= toppingKind) item.toppings }
+
+
+{-| トッピングをトグルする。存在すれば削除、なければ追加する。 -}
+toggleTopping : Topping -> Okonomiyaki -> Okonomiyaki
+toggleTopping toppingItem item =
+    if List.any (\t -> t.topping.kind == toppingItem.kind) item.toppings then
+        removeTopping toppingItem.kind item
+
+    else
+        addTopping toppingItem item
+
+
+{-| 枚数を1増やす。 -}
+incrementQuantity : Okonomiyaki -> Okonomiyaki
+incrementQuantity item =
+    { item | quantity = item.quantity + 1 }
+
+
+{-| 枚数を1減らす。0以下になる場合は Nothing を返す。 -}
+decrementQuantity : Okonomiyaki -> Maybe Okonomiyaki
+decrementQuantity item =
+    let
+        newQuantity =
+            item.quantity - 1
+    in
+    if newQuantity <= 0 then
+        Nothing
+
+    else
+        Just { item | quantity = newQuantity }

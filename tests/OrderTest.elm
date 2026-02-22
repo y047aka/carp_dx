@@ -212,6 +212,7 @@ suite =
                         |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
+                        |> Order.normalizeBase 0
                         |> Order.calculateTotal
                         -- 麺なし: 900
                         |> Expect.equal 900
@@ -232,8 +233,9 @@ suite =
                         |> Order.addNoodleToLastBase Okonomiyaki.noodleUdon
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
+                        |> Order.normalizeBase 0
                         |> Order.calculateTotal
-                        -- 900 + (100 + 100×2) = 1200（うどんのみ残る）
+                        -- うどんのみ残る: udonBase(1200)
                         |> Expect.equal 1200
             , test "ちゃんぽん（そば0.5玉 + うどん0.5玉 = 1玉）" <|
                 \_ ->
