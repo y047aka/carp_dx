@@ -1,4 +1,4 @@
-module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, normalizeBase)
+module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, normalizeBase, BaseOrderItem)
 
 import Menu exposing (MenuItem)
 import Okonomiyaki exposing (Noodle, Okonomiyaki, Topping)
@@ -11,9 +11,16 @@ type alias StandaloneOrderItem =
     }
 
 
+-- お好み焼き注文アイテム（構成 + 枚数）
+type alias BaseOrderItem =
+    { okonomiyaki : Okonomiyaki.Okonomiyaki
+    , quantity : Int
+    }
+
+
 -- 注文アイテムの型（Sum Type）
 type OrderItemType
-    = BaseOrder Okonomiyaki
+    = BaseOrder BaseOrderItem
     | StandaloneOrder StandaloneOrderItem
 
 
@@ -30,7 +37,7 @@ emptyOrder =
 
 
 -- ヘルパー：指定インデックスのお好み焼きに変換を適用する
-updateBaseItemAt : Int -> (Okonomiyaki -> Okonomiyaki) -> Order -> Order
+updateBaseItemAt : Int -> (Okonomiyaki.Okonomiyaki -> Okonomiyaki.Okonomiyaki) -> Order -> Order
 updateBaseItemAt index transform order =
     { order
         | items =
@@ -38,8 +45,8 @@ updateBaseItemAt index transform order =
                 (\i item ->
                     if i == index then
                         case item of
-                            BaseOrder baseItem ->
-                                BaseOrder (transform baseItem)
+                            BaseOrder baseOrderItem ->
+                                BaseOrder { baseOrderItem | okonomiyaki = transform baseOrderItem.okonomiyaki }
 
                             _ ->
                                 item
@@ -51,17 +58,17 @@ updateBaseItemAt index transform order =
     }
 
 
--- ヘルパー：指定インデックスのお好み焼きに変換を適用し、Nothing なら削除する
-updateOrRemoveBaseItemAt : Int -> (Okonomiyaki -> Maybe Okonomiyaki) -> Order -> Order
-updateOrRemoveBaseItemAt index transform order =
+-- ヘルパー：指定インデックスのBaseOrderItemに変換を適用し、Nothing なら削除する
+updateOrRemoveBaseOrderItemAt : Int -> (BaseOrderItem -> Maybe BaseOrderItem) -> Order -> Order
+updateOrRemoveBaseOrderItemAt index transform order =
     { order
         | items =
             List.indexedMap
                 (\i item ->
                     if i == index then
                         case item of
-                            BaseOrder baseItem ->
-                                transform baseItem |> Maybe.map BaseOrder
+                            BaseOrder baseOrderItem ->
+                                transform baseOrderItem |> Maybe.map BaseOrder
 
                             _ ->
                                 Just item
@@ -77,7 +84,7 @@ updateOrRemoveBaseItemAt index transform order =
 -- 新しいお好み焼きを追加
 addBaseItem : Okonomiyaki.OkonomiyakiBase -> Order -> Order
 addBaseItem base order =
-    { order | items = order.items ++ [ BaseOrder (Okonomiyaki.init base) ] }
+    { order | items = order.items ++ [ BaseOrder { okonomiyaki = Okonomiyaki.init base, quantity = 1 } ] }
 
 
 -- 独立商品（焼き物・飲み物）を追加または数量を増やす
@@ -142,7 +149,7 @@ getLastBaseItemIndex order =
                     BaseOrder _ ->
                         Just idx
 
-                    _ ->
+                    StandaloneOrder _ ->
                         Nothing
             )
         |> List.head
@@ -181,13 +188,41 @@ toggleTopping index toppingItem order =
 -- お好み焼きの数量を増やす
 incrementBaseQuantity : Int -> Order -> Order
 incrementBaseQuantity index order =
-    updateBaseItemAt index Okonomiyaki.incrementQuantity order
+    { order
+        | items =
+            List.indexedMap
+                (\i item ->
+                    if i == index then
+                        case item of
+                            BaseOrder baseOrderItem ->
+                                BaseOrder { baseOrderItem | quantity = baseOrderItem.quantity + 1 }
+
+                            _ ->
+                                item
+
+                    else
+                        item
+                )
+                order.items
+    }
 
 
 -- お好み焼きの数量を減らす（0になったら削除）
 decrementBaseQuantity : Int -> Order -> Order
 decrementBaseQuantity index order =
-    updateOrRemoveBaseItemAt index Okonomiyaki.decrementQuantity order
+    updateOrRemoveBaseOrderItemAt index
+        (\baseOrderItem ->
+            let
+                newQuantity =
+                    baseOrderItem.quantity - 1
+            in
+            if newQuantity <= 0 then
+                Nothing
+
+            else
+                Just { baseOrderItem | quantity = newQuantity }
+        )
+        order
 
 
 -- 麺の数量を増やす（0.5玉単位、新規追加にも対応）
@@ -262,8 +297,8 @@ calculateTotal order =
         |> List.map
             (\item ->
                 case item of
-                    BaseOrder baseItem ->
-                        Okonomiyaki.calculateTotal baseItem
+                    BaseOrder baseOrderItem ->
+                        Okonomiyaki.calculateTotal baseOrderItem.okonomiyaki * baseOrderItem.quantity
 
                     StandaloneOrder standaloneItem ->
                         standaloneItem.menuItem.price * standaloneItem.quantity

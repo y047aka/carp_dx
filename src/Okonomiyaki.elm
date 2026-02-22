@@ -18,8 +18,6 @@ module Okonomiyaki exposing
     , baseZenbuIriBase
     , calculateTotal
     , decrementNoodle
-    , decrementQuantity
-    , incrementQuantity
     , init
     , isDefaultNoodleOf
     , kindToBase
@@ -157,12 +155,10 @@ type alias NoodleAddition =
 
 `base` にベースのドメイン情報（`OkonomiyakiBase`）を持ち、
 `noodles` と `toppings` にそれぞれの追加オプションを格納する。
-`quantity` はこのお好み焼き自体の枚数を表す。
 
 -}
 type alias Okonomiyaki =
     { base : OkonomiyakiBase
-    , quantity : Int
     , noodles : List NoodleAddition
     , toppings : List ToppingAddition
     }
@@ -391,7 +387,6 @@ init base =
                     []
     in
     { base = base
-    , quantity = 1
     , noodles = initialNoodles
     , toppings = initialToppings
     }
@@ -437,9 +432,9 @@ normalizeBase baseItem =
     { baseItem | base = newBase }
 
 
-{-| お好み焼きの小計を計算する。
+{-| お好み焼き1枚あたりの金額を計算する。
 
-計算式：`(ベース価格 + 麺追加料金 + トッピング料金) × 枚数`
+計算式：`ベース価格 + 麺追加料金 + トッピング料金`
 
 **麺の料金ルール：**
 
@@ -497,7 +492,7 @@ calculateTotal baseItem =
                 |> List.map (\t -> t.topping.price * t.quantity)
                 |> List.sum
     in
-    (basePrice + noodlePrice + toppingsPrice) * baseItem.quantity
+    basePrice + noodlePrice + toppingsPrice
 
 
 -- 操作
@@ -587,21 +582,3 @@ toggleTopping toppingItem item =
         addTopping toppingItem item
 
 
-{-| 枚数を1増やす。 -}
-incrementQuantity : Okonomiyaki -> Okonomiyaki
-incrementQuantity item =
-    { item | quantity = item.quantity + 1 }
-
-
-{-| 枚数を1減らす。0以下になる場合は Nothing を返す。 -}
-decrementQuantity : Okonomiyaki -> Maybe Okonomiyaki
-decrementQuantity item =
-    let
-        newQuantity =
-            item.quantity - 1
-    in
-    if newQuantity <= 0 then
-        Nothing
-
-    else
-        Just { item | quantity = newQuantity }

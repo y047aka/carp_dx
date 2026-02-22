@@ -7,7 +7,7 @@ import Html.Events exposing (onClick)
 import Menu exposing (MenuCategory, MenuItem)
 import MenuData
 import Okonomiyaki exposing (Noodle, NoodleAddition, Okonomiyaki, Topping, ToppingAddition)
-import Order exposing (Order, OrderItemType(..), StandaloneOrderItem)
+import Order exposing (BaseOrderItem, Order, OrderItemType(..), StandaloneOrderItem)
 
 
 main : Program () Model Msg
@@ -252,7 +252,7 @@ menuItemCard item =
         ]
 
 
-getBaseItemByIndex : Int -> Order -> Maybe Okonomiyaki
+getBaseItemByIndex : Int -> Order -> Maybe BaseOrderItem
 getBaseItemByIndex index order =
     order.items
         |> List.drop index
@@ -260,10 +260,10 @@ getBaseItemByIndex index order =
         |> Maybe.andThen
             (\item ->
                 case item of
-                    BaseOrder baseItem ->
-                        Just baseItem
+                    BaseOrder baseOrderItem ->
+                        Just baseOrderItem
 
-                    _ ->
+                    StandaloneOrder _ ->
                         Nothing
             )
 
@@ -316,8 +316,8 @@ orderSummary model =
 orderItemView : Int -> OrderItemType -> Html Msg
 orderItemView index item =
     case item of
-        BaseOrder baseItem ->
-            baseOrderView index baseItem
+        BaseOrder baseOrderItem ->
+            baseOrderView index baseOrderItem
 
         StandaloneOrder standaloneItem ->
             standaloneOrderView standaloneItem
@@ -332,15 +332,22 @@ noodlePrice noodleAddition =
     n.basePrice + n.pricePerHalfBall * noodleAddition.quantity
 
 
-baseOrderView : Int -> Okonomiyaki -> Html Msg
-baseOrderView index baseItem =
+baseOrderView : Int -> BaseOrderItem -> Html Msg
+baseOrderView index baseOrderItem =
+    let
+        okonomiyaki =
+            baseOrderItem.okonomiyaki
+
+        quantity =
+            baseOrderItem.quantity
+    in
     div [ class "mb-4 p-3 bg-base-200 rounded-lg" ]
         [ -- お好み焼き本体
           div [ class "flex flex-wrap items-center justify-between gap-2 mb-2" ]
             [ div [ class "flex-1 min-w-[120px]" ]
-                [ div [ class "text-lg font-bold" ] [ text baseItem.base.name ]
+                [ div [ class "text-lg font-bold" ] [ text okonomiyaki.base.name ]
                 , div [ class "text-sm text-base-content/70" ]
-                    [ text ("¥" ++ String.fromInt baseItem.base.basePrice ++ " × " ++ String.fromInt baseItem.quantity)
+                    [ text ("¥" ++ String.fromInt okonomiyaki.base.basePrice ++ " × " ++ String.fromInt quantity)
                     ]
                 ]
             , button
@@ -355,7 +362,7 @@ baseOrderView index baseItem =
                     ]
                     [ text "−" ]
                 , span [ class "text-xl font-bold w-8 text-center" ]
-                    [ text (String.fromInt baseItem.quantity) ]
+                    [ text (String.fromInt quantity) ]
                 , button
                     [ class "btn btn-sm btn-circle btn-primary"
                     , onClick (IncrementBaseQuantity index)
@@ -365,23 +372,23 @@ baseOrderView index baseItem =
             ]
 
         -- 麺・トッピング（badge表示）
-        , if List.isEmpty baseItem.noodles && List.isEmpty baseItem.toppings then
+        , if List.isEmpty okonomiyaki.noodles && List.isEmpty okonomiyaki.toppings then
             text ""
 
           else
             div [ class "flex flex-wrap gap-1.5 mb-2 pl-1" ]
                 (List.concat
-                    [ baseItem.noodles
+                    [ okonomiyaki.noodles
                         |> List.map
                             (\n ->
                                 span [ class "px-2.5 py-1 bg-base-300 rounded-full text-xs font-medium" ]
-                                    [ text (n.noodle.name ++ " " ++ Okonomiyaki.noodleQuantityDisplay n.quantity ++ "玉 ¥" ++ String.fromInt (noodlePrice n * baseItem.quantity)) ]
+                                    [ text (n.noodle.name ++ " " ++ Okonomiyaki.noodleQuantityDisplay n.quantity ++ "玉 ¥" ++ String.fromInt (noodlePrice n * quantity)) ]
                             )
-                    , baseItem.toppings
+                    , okonomiyaki.toppings
                         |> List.map
                             (\topping ->
                                 span [ class "px-2.5 py-1 bg-base-300 rounded-full text-xs font-medium" ]
-                                    [ text (topping.topping.name ++ " ¥" ++ String.fromInt (topping.topping.price * topping.quantity * baseItem.quantity)) ]
+                                    [ text (topping.topping.name ++ " ¥" ++ String.fromInt (topping.topping.price * topping.quantity * quantity)) ]
                             )
                     ]
                 )
@@ -390,7 +397,7 @@ baseOrderView index baseItem =
         , div [ class "flex justify-between pt-2 mt-2 border-t border-base-300" ]
             [ span [ class "font-semibold" ] [ text "小計" ]
             , span [ class "font-bold text-primary" ]
-                [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal baseItem))
+                [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal okonomiyaki * quantity))
                 ]
             ]
         ]
@@ -437,14 +444,17 @@ editBaseModal model =
                 Nothing ->
                     text ""
 
-                Just baseItem ->
+                Just baseOrderItem ->
                     let
+                        okonomiyaki =
+                            baseOrderItem.okonomiyaki
+
                         modalTitle =
                             if model.isAddingNewBase then
-                                "「" ++ baseItem.base.name ++ "」をカスタマイズ"
+                                "「" ++ okonomiyaki.base.name ++ "」をカスタマイズ"
 
                             else
-                                "「" ++ baseItem.base.name ++ "」を編集"
+                                "「" ++ okonomiyaki.base.name ++ "」を編集"
                     in
                     div [ class "modal modal-open" ]
                         [ div [ class "modal-box max-w-2xl max-h-[90vh] flex flex-col p-0" ]
@@ -461,7 +471,7 @@ editBaseModal model =
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "麺" ]
                                     , div [ class "grid grid-cols-2 gap-3" ]
                                         (Okonomiyaki.allNoodles
-                                            |> List.map (noodleMenuItem index baseItem)
+                                            |> List.map (noodleMenuItem index okonomiyaki)
                                         )
                                     ]
 
@@ -470,7 +480,7 @@ editBaseModal model =
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "トッピング" ]
                                     , div [ class "grid grid-cols-2 gap-3" ]
                                         (Okonomiyaki.allToppings
-                                            |> List.map (toppingMenuItem index baseItem.toppings)
+                                            |> List.map (toppingMenuItem index okonomiyaki.toppings)
                                         )
                                     ]
                                 ]
@@ -481,22 +491,22 @@ editBaseModal model =
                                   div [ class "bg-base-100 rounded-xl p-4 border border-base-300 mb-3" ]
                                     [ -- ベース
                                       div [ class "font-bold mb-3" ]
-                                        [ text baseItem.base.name ]
+                                        [ text okonomiyaki.base.name ]
 
                                     -- 麺・トッピング（badge表示）
-                                    , if List.isEmpty baseItem.noodles && List.isEmpty baseItem.toppings then
+                                    , if List.isEmpty okonomiyaki.noodles && List.isEmpty okonomiyaki.toppings then
                                         text ""
 
                                       else
                                         div [ class "flex flex-wrap gap-1.5 mb-3" ]
                                             (List.concat
-                                                [ baseItem.noodles
+                                                [ okonomiyaki.noodles
                                                     |> List.map
                                                         (\n ->
                                                             span [ class "px-2.5 py-1 bg-base-200 rounded-full text-xs font-medium" ]
                                                                 [ text (n.noodle.name ++ " (" ++ Okonomiyaki.noodleQuantityDisplay n.quantity ++ "玉)") ]
                                                         )
-                                                , baseItem.toppings
+                                                , okonomiyaki.toppings
                                                     |> List.map
                                                         (\topping ->
                                                             span [ class "px-2.5 py-1 bg-base-200 rounded-full text-xs font-medium" ]
@@ -509,7 +519,7 @@ editBaseModal model =
                                     , div [ class "flex items-center justify-between pt-3 border-t border-base-300" ]
                                         [ span [ class "text-sm font-semibold text-base-content/70" ] [ text "小計" ]
                                         , span [ class "text-2xl font-bold text-primary" ]
-                                            [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal baseItem)) ]
+                                            [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal okonomiyaki * baseOrderItem.quantity)) ]
                                         ]
                                     ]
 

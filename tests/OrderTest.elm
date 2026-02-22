@@ -79,10 +79,10 @@ suite =
                                     List.map
                                         (\item ->
                                             case item of
-                                                BaseOrder baseItem ->
-                                                    BaseOrder { baseItem | quantity = 2 }
+                                                BaseOrder baseOrderItem ->
+                                                    BaseOrder { baseOrderItem | quantity = 2 }
 
-                                                _ ->
+                                                StandaloneOrder _ ->
                                                     item
                                         )
                                         order.items
@@ -144,8 +144,8 @@ suite =
                             List.head order.items
                     in
                     case firstItem of
-                        Just (BaseOrder item) ->
-                            item.quantity |> Expect.equal 2
+                        Just (BaseOrder baseOrderItem) ->
+                            baseOrderItem.quantity |> Expect.equal 2
 
                         _ ->
                             Expect.fail "Expected a BaseOrder"
@@ -162,8 +162,8 @@ suite =
                             List.head order.items
                     in
                     case firstItem of
-                        Just (BaseOrder item) ->
-                            item.quantity |> Expect.equal 1
+                        Just (BaseOrder baseOrderItem) ->
+                            baseOrderItem.quantity |> Expect.equal 1
 
                         _ ->
                             Expect.fail "Expected a BaseOrder"
