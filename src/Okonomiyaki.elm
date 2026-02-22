@@ -1,10 +1,9 @@
 module Okonomiyaki exposing
-    ( Noodle
+    ( BaseKind(..)
+    , Noodle
     , NoodleAddition
     , NoodleKind(..)
     , Okonomiyaki
-    , OkonomiyakiBase
-    , OkonomiyakiBaseKind(..)
     , Topping
     , ToppingAddition
     , ToppingKind(..)
@@ -12,15 +11,12 @@ module Okonomiyaki exposing
     , addTopping
     , allNoodles
     , allToppings
-    , baseYasaiBase
-    , baseSobaBase
-    , baseUdonBase
-    , baseZenbuIriBase
+    , baseName
+    , basePrice
     , calculateTotal
     , decrementNoodle
     , init
     , isDefaultNoodleOf
-    , kindToBase
     , noodleQuantityDisplay
     , noodleSoba
     , noodleUdon
@@ -44,11 +40,11 @@ module Okonomiyaki exposing
 ## 設計方針
 
   - **責務分離**: このモジュールは `MenuItem` に依存しない。
-    `MenuItem` → `OkonomiyakiBase` の変換は `MenuData` モジュールが担う。
+    `MenuItem` ↔ `BaseKind` の変換は `MenuData` モジュールが担う。
   - **麺の独立**: 麺は `Noodle` 型で表現する。
     麺の識別・価格計算・注文操作はすべてこのモジュール内で完結する。
-  - **ベース** (`OkonomiyakiBase`) は `includedNoodleKind` を持つ場合があり、
-    その麺1玉分の価格はベースの `basePrice` に含まれている。
+  - **ベース**: 各ベースは込み麺を持つ場合があり、その麺1玉分の価格はベース価格に含まれている。
+    ベース情報へのアクセスには `baseName` と `basePrice` ヘルパー関数を使用する。
   - **麺の数量** は内部的に「半玉単位」で管理する（quantity 2 = 1玉）。
     表示変換には `noodleQuantityDisplay` を使用する。
   - `normalizeBase` は麺・トッピングの状態からベースを一意に決定する。
@@ -60,7 +56,7 @@ module Okonomiyaki exposing
 -- 型定義
 
 
-{-| 麺の種類。`OkonomiyakiBase.includedNoodleKind` での比較に使用する。 -}
+{-| 麺の種類。麺の同一性識別に使用する。 -}
 type NoodleKind
     = NoodleKindSoba
     | NoodleKindUdon
@@ -78,22 +74,15 @@ type ToppingKind
 
 
 {-| お好み焼きベースの種類。IDハードコードの代替として使用する。 -}
-type OkonomiyakiBaseKind
+type BaseKind
     = Yasai
     | Soba
     | Udon
     | ZenbuIri
 
 
-{-| お好み焼きベースのドメイン情報。注文状態として使用する。
-
-  - `kind` はベースの種類を表す（IDハードコードの代替）
-  - `basePrice` は麺・トッピングを含まない純粋なベース料金
-  - `includedNoodleKind` はベース価格に込みの麺の種類（あれば）
-
--}
-type alias OkonomiyakiBase =
-    { kind : OkonomiyakiBaseKind
+type alias BaseInfo =
+    { kind : BaseKind
     , name : String
     , basePrice : Int
     , includedNoodleKind : Maybe NoodleKind
@@ -153,22 +142,23 @@ type alias NoodleAddition =
 
 {-| お好み焼き1枚の完全な構成。
 
-`base` にベースのドメイン情報（`OkonomiyakiBase`）を持ち、
+`base` にベースの種類（`BaseKind`）を持ち、
 `noodles` と `toppings` にそれぞれの追加オプションを格納する。
+ベースの詳細情報（名前・価格等）は `baseName` と `basePrice` で取得できる。
 
 -}
 type alias Okonomiyaki =
-    { base : OkonomiyakiBase
+    { base : BaseKind
     , noodles : List NoodleAddition
     , toppings : List ToppingAddition
     }
 
 
--- マスタデータ：OkonomiyakiBase
+-- マスタデータ：BaseInfo
 
 
 {-| 野菜入りのベースドメイン情報。 -}
-baseYasaiBase : OkonomiyakiBase
+baseYasaiBase : BaseInfo
 baseYasaiBase =
     { kind = Yasai
     , name = "野菜入り"
@@ -178,7 +168,7 @@ baseYasaiBase =
 
 
 {-| そば入りのベースドメイン情報（そば1玉分込み）。 -}
-baseSobaBase : OkonomiyakiBase
+baseSobaBase : BaseInfo
 baseSobaBase =
     { kind = Soba
     , name = "そば入り"
@@ -188,7 +178,7 @@ baseSobaBase =
 
 
 {-| うどん入りのベースドメイン情報（うどん1玉分込み）。 -}
-baseUdonBase : OkonomiyakiBase
+baseUdonBase : BaseInfo
 baseUdonBase =
     { kind = Udon
     , name = "うどん入り"
@@ -198,7 +188,7 @@ baseUdonBase =
 
 
 {-| 全部入りのベースドメイン情報（イカ・エビ込み、麺は別途追加）。 -}
-baseZenbuIriBase : OkonomiyakiBase
+baseZenbuIriBase : BaseInfo
 baseZenbuIriBase =
     { kind = ZenbuIri
     , name = "全部入り"
@@ -318,20 +308,32 @@ noodleQuantityDisplay internalQuantity =
         String.fromInt wholePart
 
 
-{-| `noodle` が `base` の込み麺として内包されているか判定する。
+{-| `noodle` が `kind` の込み麺として内包されているか判定する。
 
-    isDefaultNoodleOf noodleSoba baseSobaBase  == True
-    isDefaultNoodleOf noodleUdon baseSobaBase  == False
-    isDefaultNoodleOf noodleSoba baseYasaiBase == False
+    isDefaultNoodleOf noodleSoba Soba  == True
+    isDefaultNoodleOf noodleUdon Soba  == False
+    isDefaultNoodleOf noodleSoba Yasai == False
 
 -}
-isDefaultNoodleOf : Noodle -> OkonomiyakiBase -> Bool
-isDefaultNoodleOf noodle base =
-    base.includedNoodleKind == Just noodle.kind
+isDefaultNoodleOf : Noodle -> BaseKind -> Bool
+isDefaultNoodleOf noodle kind =
+    (kindToBase kind).includedNoodleKind == Just noodle.kind
 
 
-{-| `OkonomiyakiBaseKind` から `OkonomiyakiBase` を取得する。 -}
-kindToBase : OkonomiyakiBaseKind -> OkonomiyakiBase
+{-| お好み焼きのベース名を取得する。 -}
+baseName : Okonomiyaki -> String
+baseName okonomiyaki =
+    (kindToBase okonomiyaki.base).name
+
+
+{-| お好み焼きのベース価格を取得する。 -}
+basePrice : Okonomiyaki -> Int
+basePrice okonomiyaki =
+    (kindToBase okonomiyaki.base).basePrice
+
+
+-- `BaseKind` からマスタデータ `BaseInfo` を取得する内部関数。
+kindToBase : BaseKind -> BaseInfo
 kindToBase kind =
     case kind of
         Yasai ->
@@ -350,16 +352,19 @@ kindToBase kind =
 -- 構築・正規化・計算
 
 
-{-| `OkonomiyakiBase` から初期 `Okonomiyaki` を生成する。
+{-| `BaseKind` から初期 `Okonomiyaki` を生成する。
 
 `includedNoodleKind` を持つベースの場合、`noodles` に1玉（`quantity = 2`）をセットする。
 `includedNoodleKind` を持たない `Yasai` の場合、`noodles` は空になる。
 `ZenbuIri` の場合、`noodles` にそば1玉をセットし、`toppings` にイカ・エビをセットする。
 
 -}
-init : OkonomiyakiBase -> Okonomiyaki
-init base =
+init : BaseKind -> Okonomiyaki
+init kind =
     let
+        base =
+            kindToBase kind
+
         initialNoodles =
             case base.includedNoodleKind of
                 Just NoodleKindSoba ->
@@ -369,7 +374,7 @@ init base =
                     [ { noodle = noodleUdon, quantity = 2 } ]
 
                 Nothing ->
-                    case base.kind of
+                    case kind of
                         ZenbuIri ->
                             [ { noodle = noodleSoba, quantity = 2 } ]
 
@@ -377,7 +382,7 @@ init base =
                             []
 
         initialToppings =
-            case base.kind of
+            case kind of
                 ZenbuIri ->
                     [ { topping = toppingSquid, quantity = 1 }
                     , { topping = toppingShrimp, quantity = 1 }
@@ -386,7 +391,7 @@ init base =
                 _ ->
                     []
     in
-    { base = base
+    { base = kind
     , noodles = initialNoodles
     , toppings = initialToppings
     }
@@ -413,23 +418,23 @@ normalizeBase baseItem =
         hasShrimp =
             List.any (\t -> t.topping.kind == ToppingKindShrimp) baseItem.toppings
 
-        hasNoodleKind kind =
-            List.any (\n -> n.noodle.kind == kind) baseItem.noodles
+        hasNoodleKind noodleKind =
+            List.any (\n -> n.noodle.kind == noodleKind) baseItem.noodles
 
-        newBase =
+        newBaseKind =
             if hasSquid && hasShrimp then
-                baseZenbuIriBase
+                ZenbuIri
 
             else if hasNoodleKind NoodleKindSoba then
-                baseSobaBase
+                Soba
 
             else if hasNoodleKind NoodleKindUdon then
-                baseUdonBase
+                Udon
 
             else
-                baseYasaiBase
+                Yasai
     in
-    { baseItem | base = newBase }
+    { baseItem | base = newBaseKind }
 
 
 {-| お好み焼き1枚あたりの金額を計算する。
@@ -447,13 +452,16 @@ normalizeBase baseItem =
 calculateTotal : Okonomiyaki -> Int
 calculateTotal baseItem =
     let
-        basePrice =
-            baseItem.base.basePrice
+        base =
+            kindToBase baseItem.base
+
+        basePriceValue =
+            base.basePrice
 
         noodlePrice =
             let
                 includedNoodleKind =
-                    baseItem.base.includedNoodleKind
+                    base.includedNoodleKind
 
                 extraNoodleQuantity =
                     baseItem.noodles
@@ -492,7 +500,7 @@ calculateTotal baseItem =
                 |> List.map (\t -> t.topping.price * t.quantity)
                 |> List.sum
     in
-    basePrice + noodlePrice + toppingsPrice
+    basePriceValue + noodlePrice + toppingsPrice
 
 
 -- 操作

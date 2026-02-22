@@ -4,7 +4,7 @@ module MenuData exposing
     , baseSoba
     , baseUdon
     , baseZenbuIri
-    , menuItemToOkonomiyakiBase
+    , menuItemToBaseKind
     , grilledKaki
     , grilledHotate
     , grilledIka
@@ -15,7 +15,7 @@ module MenuData exposing
     )
 
 import Menu exposing (MenuCategory(..), MenuItem)
-import Okonomiyaki exposing (OkonomiyakiBaseKind(..))
+import Okonomiyaki exposing (BaseKind(..))
 
 
 
@@ -76,21 +76,21 @@ baseZenbuIri =
     }
 
 
-{-| `MenuItem` から `OkonomiyakiBase` へ変換する。
+{-| `MenuItem` から `BaseKind` へ変換する。
 
-ベース用 `MenuItem` の `id` で検索し、対応する `OkonomiyakiBase` を返す。
+ベース用 `MenuItem` の `id` で検索し、対応する `BaseKind` を返す。
 ベース以外の `MenuItem` は `Nothing` を返す。
 
 -}
-menuItemToOkonomiyakiBase : MenuItem -> Maybe Okonomiyaki.OkonomiyakiBase
-menuItemToOkonomiyakiBase menuItem =
+menuItemToBaseKind : MenuItem -> Maybe Okonomiyaki.BaseKind
+menuItemToBaseKind menuItem =
     baseMenuEntries
         |> List.filter (\e -> e.menuItem.id == menuItem.id)
         |> List.head
-        |> Maybe.map (\e -> Okonomiyaki.kindToBase e.baseKind)
+        |> Maybe.map .baseKind
 
 
-baseMenuEntries : List { menuItem : MenuItem, baseKind : OkonomiyakiBaseKind }
+baseMenuEntries : List { menuItem : MenuItem, baseKind : BaseKind }
 baseMenuEntries =
     [ { menuItem = baseYasai, baseKind = Yasai }
     , { menuItem = baseSoba, baseKind = Soba }

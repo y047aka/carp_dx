@@ -66,11 +66,11 @@ update msg model =
         AddMenuItem menuItem ->
             case menuItem.category of
                 Menu.Base ->
-                    case MenuData.menuItemToOkonomiyakiBase menuItem of
-                        Just base ->
+                    case MenuData.menuItemToBaseKind menuItem of
+                        Just kind ->
                             let
                                 newOrder =
-                                    Order.addBaseItem base model.currentOrder
+                                    Order.addBaseItem kind model.currentOrder
 
                                 lastIndex =
                                     List.length newOrder.items - 1
@@ -233,9 +233,9 @@ menuItemCard item =
     let
         priceText =
             if item.category == Menu.Base then
-                case MenuData.menuItemToOkonomiyakiBase item of
-                    Just base ->
-                        "¥" ++ String.fromInt (Okonomiyaki.calculateTotal (Okonomiyaki.init base))
+                case MenuData.menuItemToBaseKind item of
+                    Just kind ->
+                        "¥" ++ String.fromInt (Okonomiyaki.calculateTotal (Okonomiyaki.init kind))
 
                     Nothing ->
                         "¥?"
@@ -345,9 +345,9 @@ baseOrderView index baseOrderItem =
         [ -- お好み焼き本体
           div [ class "flex flex-wrap items-center justify-between gap-2 mb-2" ]
             [ div [ class "flex-1 min-w-[120px]" ]
-                [ div [ class "text-lg font-bold" ] [ text okonomiyaki.base.name ]
+                [ div [ class "text-lg font-bold" ] [ text (Okonomiyaki.baseName okonomiyaki) ]
                 , div [ class "text-sm text-base-content/70" ]
-                    [ text ("¥" ++ String.fromInt okonomiyaki.base.basePrice ++ " × " ++ String.fromInt quantity)
+                    [ text ("¥" ++ String.fromInt (Okonomiyaki.basePrice okonomiyaki) ++ " × " ++ String.fromInt quantity)
                     ]
                 ]
             , button
@@ -451,10 +451,10 @@ editBaseModal model =
 
                         modalTitle =
                             if model.isAddingNewBase then
-                                "「" ++ okonomiyaki.base.name ++ "」をカスタマイズ"
+                                "「" ++ Okonomiyaki.baseName okonomiyaki ++ "」をカスタマイズ"
 
                             else
-                                "「" ++ okonomiyaki.base.name ++ "」を編集"
+                                "「" ++ Okonomiyaki.baseName okonomiyaki ++ "」を編集"
                     in
                     div [ class "modal modal-open" ]
                         [ div [ class "modal-box max-w-2xl max-h-[90vh] flex flex-col p-0" ]
@@ -491,7 +491,7 @@ editBaseModal model =
                                   div [ class "bg-base-100 rounded-xl p-4 border border-base-300 mb-3" ]
                                     [ -- ベース
                                       div [ class "font-bold mb-3" ]
-                                        [ text okonomiyaki.base.name ]
+                                        [ text (Okonomiyaki.baseName okonomiyaki) ]
 
                                     -- 麺・トッピング（badge表示）
                                     , if List.isEmpty okonomiyaki.noodles && List.isEmpty okonomiyaki.toppings then

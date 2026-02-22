@@ -82,9 +82,9 @@ updateOrRemoveBaseOrderItemAt index transform order =
 
 
 -- 新しいお好み焼きを追加
-addBaseItem : Okonomiyaki.OkonomiyakiBase -> Order -> Order
-addBaseItem base order =
-    { order | items = order.items ++ [ BaseOrder { okonomiyaki = Okonomiyaki.init base, quantity = 1 } ] }
+addBaseItem : Okonomiyaki.BaseKind -> Order -> Order
+addBaseItem kind order =
+    { order | items = order.items ++ [ BaseOrder { okonomiyaki = Okonomiyaki.init kind, quantity = 1 } ] }
 
 
 -- 独立商品（焼き物・飲み物）を追加または数量を増やす
