@@ -8,33 +8,7 @@ import Test exposing (..)
 suite : Test
 suite =
     describe "Okonomiyaki"
-        [ describe "isDefaultNoodleOf"
-            [ describe "対応する麺は True"
-                [ test "noodleSoba は Soba の込み麺" <|
-                    \_ ->
-                        Okonomiyaki.isDefaultNoodleOf Okonomiyaki.noodleSoba Okonomiyaki.Soba
-                            |> Expect.equal True
-                , test "noodleUdon は Udon の込み麺" <|
-                    \_ ->
-                        Okonomiyaki.isDefaultNoodleOf Okonomiyaki.noodleUdon Okonomiyaki.Udon
-                            |> Expect.equal True
-                ]
-            , describe "対応しない麺は False"
-                [ test "noodleSoba は Udon の込み麺ではない" <|
-                    \_ ->
-                        Okonomiyaki.isDefaultNoodleOf Okonomiyaki.noodleSoba Okonomiyaki.Udon
-                            |> Expect.equal False
-                , test "noodleUdon は Soba の込み麺ではない" <|
-                    \_ ->
-                        Okonomiyaki.isDefaultNoodleOf Okonomiyaki.noodleUdon Okonomiyaki.Soba
-                            |> Expect.equal False
-                , test "Yasai は込み麺を持たないので常に False" <|
-                    \_ ->
-                        Okonomiyaki.isDefaultNoodleOf Okonomiyaki.noodleSoba Okonomiyaki.Yasai
-                            |> Expect.equal False
-                ]
-            ]
-        , describe "noodleQuantityDisplay"
+        [ describe "noodleQuantityDisplay"
             [ test "1 → \"0.5\"" <|
                 \_ -> Okonomiyaki.noodleQuantityDisplay 1 |> Expect.equal "0.5"
             , test "2 → \"1\"" <|

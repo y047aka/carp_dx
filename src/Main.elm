@@ -560,12 +560,8 @@ noodleMenuItem baseIndex baseOrderItem noodle =
                 |> Maybe.map .quantity
                 |> Maybe.withDefault 0
 
-        -- ベースの込み麺として内包されているか
-        isEmbeddedInBase =
-            Okonomiyaki.isDefaultNoodleOf noodle baseOrderItem.base
-
         isSelected =
-            noodleQuantity > 0 || isEmbeddedInBase
+            noodleQuantity > 0
 
         priceText =
             if noodleQuantity > 0 then

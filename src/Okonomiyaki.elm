@@ -15,7 +15,6 @@ module Okonomiyaki exposing
     , calculateTotal
     , decrementNoodle
     , init
-    , isDefaultNoodleOf
     , noodleQuantityDisplay
     , noodleSoba
     , noodleUdon
@@ -82,7 +81,6 @@ type BaseKind
 
 type alias BaseInfo =
     { name : String
-    , includedNoodleKind : Maybe NoodleKind
     }
 
 
@@ -157,33 +155,25 @@ type alias Okonomiyaki =
 {-| 野菜入りのベースドメイン情報。 -}
 baseYasaiBase : BaseInfo
 baseYasaiBase =
-    { name = "野菜入り"
-    , includedNoodleKind = Nothing
-    }
+    { name = "野菜入り" }
 
 
-{-| そば入りのベースドメイン情報（そば1玉分込み）。 -}
+{-| そば入りのベースドメイン情報。 -}
 baseSobaBase : BaseInfo
 baseSobaBase =
-    { name = "そば入り"
-    , includedNoodleKind = Just NoodleKindSoba
-    }
+    { name = "そば入り" }
 
 
-{-| うどん入りのベースドメイン情報（うどん1玉分込み）。 -}
+{-| うどん入りのベースドメイン情報。 -}
 baseUdonBase : BaseInfo
 baseUdonBase =
-    { name = "うどん入り"
-    , includedNoodleKind = Just NoodleKindUdon
-    }
+    { name = "うどん入り" }
 
 
-{-| 全部入りのベースドメイン情報（イカ・エビ込み、麺は別途追加）。 -}
+{-| 全部入りのベースドメイン情報。 -}
 baseZenbuIriBase : BaseInfo
 baseZenbuIriBase =
-    { name = "全部入り"
-    , includedNoodleKind = Nothing
-    }
+    { name = "全部入り" }
 
 
 -- マスタデータ：トッピング
@@ -296,17 +286,6 @@ noodleQuantityDisplay internalQuantity =
     else
         String.fromInt wholePart
 
-
-{-| `noodle` が `kind` の込み麺として内包されているか判定する。
-
-    isDefaultNoodleOf noodleSoba Soba  == True
-    isDefaultNoodleOf noodleUdon Soba  == False
-    isDefaultNoodleOf noodleSoba Yasai == False
-
--}
-isDefaultNoodleOf : Noodle -> BaseKind -> Bool
-isDefaultNoodleOf noodle kind =
-    (kindToBase kind).includedNoodleKind == Just noodle.kind
 
 
 {-| お好み焼きのベース名を取得する。 -}
