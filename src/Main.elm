@@ -44,9 +44,7 @@ type Msg
     | CancelAddingBase
     | IncrementBaseQuantity Int
     | DecrementBaseQuantity Int
-    | IncrementNoodleQuantity Int Noodle
-    | DecrementNoodleQuantity Int Noodle
-    | ToggleTopping Int Topping
+    | EditOkonomiyaki Int Okonomiyaki.Msg
     | IncrementStandaloneQuantity String
     | DecrementStandaloneQuantity String
     | ShowCheckout
@@ -112,23 +110,8 @@ update msg model =
         DecrementBaseQuantity index ->
             { model | currentOrder = Order.decrementBaseQuantity index model.currentOrder }
 
-        IncrementNoodleQuantity index noodle ->
-            { model
-                | currentOrder =
-                    Order.incrementNoodleQuantity index noodle model.currentOrder
-            }
-
-        DecrementNoodleQuantity index noodle ->
-            { model
-                | currentOrder =
-                    Order.decrementNoodleQuantity index noodle model.currentOrder
-            }
-
-        ToggleTopping index toppingItem ->
-            { model
-                | currentOrder =
-                    Order.toggleTopping index toppingItem model.currentOrder
-            }
+        EditOkonomiyaki index okonomiyakiMsg ->
+            { model | currentOrder = Order.updateOkonomiyakiAt index okonomiyakiMsg model.currentOrder }
 
         IncrementStandaloneQuantity itemId ->
             { model | currentOrder = Order.incrementStandaloneQuantity itemId model.currentOrder }
@@ -566,7 +549,7 @@ noodleMenuItem baseIndex baseOrderItem noodle =
         , div [ class "flex items-center gap-2" ]
             [ button
                 [ class "btn btn-xs btn-circle btn-outline"
-                , onClick (DecrementNoodleQuantity baseIndex noodle)
+                , onClick (EditOkonomiyaki baseIndex (Okonomiyaki.DecrementNoodle noodle))
                 , disabled (not isSelected)
                 ]
                 [ text "−" ]
@@ -585,7 +568,7 @@ noodleMenuItem baseIndex baseOrderItem noodle =
                 ]
             , button
                 [ class "btn btn-xs btn-circle btn-primary"
-                , onClick (IncrementNoodleQuantity baseIndex noodle)
+                , onClick (EditOkonomiyaki baseIndex (Okonomiyaki.IncrementNoodle noodle))
                 ]
                 [ text "+" ]
             ]
@@ -602,7 +585,7 @@ toppingMenuItem baseIndex currentToppings item =
     div
         [ class "flex items-center justify-between p-3 border border-base-300 rounded-lg hover:bg-base-200 cursor-pointer"
         , classList [ ( "bg-success/10 border-success", isSelected ) ]
-        , onClick (ToggleTopping baseIndex item)
+        , onClick (EditOkonomiyaki baseIndex (Okonomiyaki.ToggleTopping item))
         ]
         [ div [ class "flex-1" ]
             [ div [ class "text-base font-bold" ] [ text item.name ]

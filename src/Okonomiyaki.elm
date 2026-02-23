@@ -5,24 +5,20 @@ module Okonomiyaki exposing
     , NoodleKind(..)
     , NoodleQuantity(..)
     , Okonomiyaki
+    , Msg(..)
     , Topping
     , ToppingAddition
     , ToppingKind(..)
-    , addTopping
     , allNoodles
     , allToppings
     , baseKind
     , baseName
     , calculateTotal
-    , decrementNoodle
-    , incrementNoodle
     , init
     , noodleAdditionPrice
     , noodleQuantityDisplay
     , noodleSoba
     , noodleUdon
-    , removeTopping
-    , toggleTopping
     , toppingCheese
     , toppingGarlic
     , toppingIkaten
@@ -30,6 +26,7 @@ module Okonomiyaki exposing
     , toppingNegi
     , toppingShrimp
     , toppingSquid
+    , update
     )
 
 {-| お好み焼きドメインのモジュール。
@@ -515,88 +512,60 @@ calculateTotal okonomiyaki =
     baseOkonomiyakiPrice + noodlePrice + toppingsPrice - zenbuIriDiscount
 
 
--- 操作
+-- Msg / update
 
 
-{-| 麺を0.5玉増やす。同種の麺があれば `incrementNoodleQuantity` で増量、なければ1玉（`Whole 1`）で新規追加する。 -}
-incrementNoodle : Noodle -> Okonomiyaki -> Okonomiyaki
-incrementNoodle noodle item =
-    let
-        hasExisting =
-            List.any (\n -> n.noodle.kind == noodle.kind) item.noodles
-    in
-    if hasExisting then
-        { item
-            | noodles =
-                List.map
-                    (\n ->
-                        if n.noodle.kind == noodle.kind then
-                            { n | quantity = incrementNoodleQuantity n.quantity }
-
-                        else
-                            n
-                    )
-                    item.noodles
-        }
-
-    else
-        { item | noodles = item.noodles ++ [ { noodle = noodle, quantity = Whole 1 } ] }
+{-| お好み焼き編集操作のメッセージ型。 -}
+type Msg
+    = IncrementNoodle Noodle
+    | DecrementNoodle Noodle
+    | ToggleTopping Topping
 
 
-{-| 麺を0.5玉減らす。`HalfBall`（0.5玉）から減らすと削除される。 -}
-decrementNoodle : Noodle -> Okonomiyaki -> Okonomiyaki
-decrementNoodle noodle item =
-    { item
-        | noodles =
-            List.filterMap
-                (\n ->
-                    if n.noodle.kind == noodle.kind then
-                        decrementNoodleQuantity n.quantity
-                            |> Maybe.map (\q -> { n | quantity = q })
+{-| `Msg` を `Okonomiyaki` に適用する。 -}
+update : Msg -> Okonomiyaki -> Okonomiyaki
+update msg okonomiyaki =
+    case msg of
+        IncrementNoodle noodle ->
+            let
+                hasExisting =
+                    List.any (\n -> n.noodle.kind == noodle.kind) okonomiyaki.noodles
+            in
+            if hasExisting then
+                { okonomiyaki
+                    | noodles =
+                        List.map
+                            (\n ->
+                                if n.noodle.kind == noodle.kind then
+                                    { n | quantity = incrementNoodleQuantity n.quantity }
 
-                    else
-                        Just n
-                )
-                item.noodles
-    }
+                                else
+                                    n
+                            )
+                            okonomiyaki.noodles
+                }
 
+            else
+                { okonomiyaki | noodles = okonomiyaki.noodles ++ [ { noodle = noodle, quantity = Whole 1 } ] }
 
-{-| トッピングを追加する。既存の同種があれば quantity+1、なければ quantity=1 で新規追加する。 -}
-addTopping : Topping -> Okonomiyaki -> Okonomiyaki
-addTopping toppingItem item =
-    let
-        hasExisting =
-            List.any (\t -> t.topping.kind == toppingItem.kind) item.toppings
-    in
-    if hasExisting then
-        { item
-            | toppings =
-                List.map
-                    (\t ->
-                        if t.topping.kind == toppingItem.kind then
-                            { t | quantity = t.quantity + 1 }
+        DecrementNoodle noodle ->
+            { okonomiyaki
+                | noodles =
+                    List.filterMap
+                        (\n ->
+                            if n.noodle.kind == noodle.kind then
+                                decrementNoodleQuantity n.quantity
+                                    |> Maybe.map (\q -> { n | quantity = q })
 
-                        else
-                            t
-                    )
-                    item.toppings
-        }
+                            else
+                                Just n
+                        )
+                        okonomiyaki.noodles
+            }
 
-    else
-        { item | toppings = item.toppings ++ [ { topping = toppingItem, quantity = 1 } ] }
+        ToggleTopping topping ->
+            if List.any (\t -> t.topping.kind == topping.kind) okonomiyaki.toppings then
+                { okonomiyaki | toppings = List.filter (\t -> t.topping.kind /= topping.kind) okonomiyaki.toppings }
 
-
-{-| 指定種類のトッピングを削除する。 -}
-removeTopping : ToppingKind -> Okonomiyaki -> Okonomiyaki
-removeTopping toppingKind item =
-    { item | toppings = List.filter (\t -> t.topping.kind /= toppingKind) item.toppings }
-
-
-{-| トッピングをトグルする。存在すれば削除、なければ追加する。 -}
-toggleTopping : Topping -> Okonomiyaki -> Okonomiyaki
-toggleTopping toppingItem item =
-    if List.any (\t -> t.topping.kind == toppingItem.kind) item.toppings then
-        removeTopping toppingItem.kind item
-
-    else
-        addTopping toppingItem item
+            else
+                { okonomiyaki | toppings = okonomiyaki.toppings ++ [ { topping = topping, quantity = 1 } ] }

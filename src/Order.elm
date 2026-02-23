@@ -1,7 +1,7 @@
-module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, BaseOrderItem)
+module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, updateOkonomiyakiAt, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementStandaloneQuantity, decrementStandaloneQuantity, BaseOrderItem)
 
 import Menu exposing (MenuItem)
-import Okonomiyaki exposing (Noodle, Okonomiyaki, Topping)
+import Okonomiyaki exposing (Okonomiyaki)
 
 
 -- 独立した商品（焼き物、飲み物）
@@ -13,7 +13,7 @@ type alias StandaloneOrderItem =
 
 -- お好み焼き注文アイテム（構成 + 枚数）
 type alias BaseOrderItem =
-    { okonomiyaki : Okonomiyaki.Okonomiyaki
+    { okonomiyaki : Okonomiyaki
     , quantity : Int
     }
 
@@ -37,7 +37,7 @@ emptyOrder =
 
 
 -- ヘルパー：指定インデックスのお好み焼きに変換を適用する
-updateBaseItemAt : Int -> (Okonomiyaki.Okonomiyaki -> Okonomiyaki.Okonomiyaki) -> Order -> Order
+updateBaseItemAt : Int -> (Okonomiyaki -> Okonomiyaki) -> Order -> Order
 updateBaseItemAt index transform order =
     { order
         | items =
@@ -137,50 +137,10 @@ addStandaloneItem menuItem order =
             }
 
 
--- ヘルパー：最後のお好み焼きのインデックスを取得
-getLastBaseItemIndex : Order -> Maybe Int
-getLastBaseItemIndex order =
-    order.items
-        |> List.indexedMap Tuple.pair
-        |> List.reverse
-        |> List.filterMap
-            (\( idx, item ) ->
-                case item of
-                    BaseOrder _ ->
-                        Just idx
-
-                    StandaloneOrder _ ->
-                        Nothing
-            )
-        |> List.head
-
-
--- 最後のお好み焼きに麺を追加する
-addNoodleToLastBase : Noodle -> Order -> Order
-addNoodleToLastBase noodle order =
-    case getLastBaseItemIndex order of
-        Just idx ->
-            updateBaseItemAt idx (Okonomiyaki.incrementNoodle noodle) order
-
-        Nothing ->
-            order
-
-
--- 最後のお好み焼きにトッピングを追加
-addToppingToLastBase : Topping -> Order -> Order
-addToppingToLastBase toppingItem order =
-    case getLastBaseItemIndex order of
-        Just idx ->
-            updateBaseItemAt idx (Okonomiyaki.addTopping toppingItem) order
-
-        Nothing ->
-            order
-
-
--- トッピングのトグル（未選択なら追加、選択済みなら削除）
-toggleTopping : Int -> Topping -> Order -> Order
-toggleTopping index toppingItem order =
-    updateBaseItemAt index (Okonomiyaki.toggleTopping toppingItem) order
+-- Okonomiyaki.Msg を指定インデックスのお好み焼きに適用する
+updateOkonomiyakiAt : Int -> Okonomiyaki.Msg -> Order -> Order
+updateOkonomiyakiAt index msg order =
+    updateBaseItemAt index (Okonomiyaki.update msg) order
 
 
 -- お好み焼きの数量を増やす
@@ -221,18 +181,6 @@ decrementBaseQuantity index order =
                 Just { baseOrderItem | quantity = newQuantity }
         )
         order
-
-
--- 麺の数量を増やす（0.5玉単位、新規追加にも対応）
-incrementNoodleQuantity : Int -> Noodle -> Order -> Order
-incrementNoodleQuantity baseIndex noodle order =
-    updateBaseItemAt baseIndex (Okonomiyaki.incrementNoodle noodle) order
-
-
--- 麺の数量を減らす（0.5玉単位、0になったら削除）
-decrementNoodleQuantity : Int -> Noodle -> Order -> Order
-decrementNoodleQuantity baseIndex noodle order =
-    updateBaseItemAt baseIndex (Okonomiyaki.decrementNoodle noodle) order
 
 
 -- 独立商品の数量を増やす

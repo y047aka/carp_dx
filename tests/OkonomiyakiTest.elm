@@ -298,77 +298,51 @@ suite =
                             |> Expect.equal 1600
                 ]
             ]
-        , describe "incrementNoodle"
+        , describe "IncrementNoodle"
             [ test "新規麺は1玉（Whole 1）で追加される" <|
                 \_ ->
                     Okonomiyaki.init Okonomiyaki.Yasai
-                        |> Okonomiyaki.incrementNoodle Okonomiyaki.noodleSoba
+                        |> Okonomiyaki.update (Okonomiyaki.IncrementNoodle Okonomiyaki.noodleSoba)
                         |> .noodles
                         |> List.map (\n -> ( n.noodle.kind, n.quantity ))
                         |> Expect.equal [ ( Okonomiyaki.NoodleKindSoba, Okonomiyaki.Whole 1 ) ]
             , test "既存麺は半玉増える（Whole 1 → WholeAndHalf 1）" <|
                 \_ ->
                     Okonomiyaki.init Okonomiyaki.Soba
-                        |> Okonomiyaki.incrementNoodle Okonomiyaki.noodleSoba
+                        |> Okonomiyaki.update (Okonomiyaki.IncrementNoodle Okonomiyaki.noodleSoba)
                         |> .noodles
                         |> List.map (\n -> ( n.noodle.kind, n.quantity ))
                         |> Expect.equal [ ( Okonomiyaki.NoodleKindSoba, Okonomiyaki.WholeAndHalf 1 ) ]
             ]
-        , describe "decrementNoodle"
+        , describe "DecrementNoodle"
             [ test "半玉減らす（Whole 1 → HalfBall）" <|
                 \_ ->
                     Okonomiyaki.init Okonomiyaki.Soba
-                        |> Okonomiyaki.decrementNoodle Okonomiyaki.noodleSoba
+                        |> Okonomiyaki.update (Okonomiyaki.DecrementNoodle Okonomiyaki.noodleSoba)
                         |> .noodles
                         |> List.map (\n -> ( n.noodle.kind, n.quantity ))
                         |> Expect.equal [ ( Okonomiyaki.NoodleKindSoba, Okonomiyaki.HalfBall ) ]
             , test "0になったら削除される" <|
                 \_ ->
                     Okonomiyaki.init Okonomiyaki.Soba
-                        |> Okonomiyaki.decrementNoodle Okonomiyaki.noodleSoba
-                        |> Okonomiyaki.decrementNoodle Okonomiyaki.noodleSoba
+                        |> Okonomiyaki.update (Okonomiyaki.DecrementNoodle Okonomiyaki.noodleSoba)
+                        |> Okonomiyaki.update (Okonomiyaki.DecrementNoodle Okonomiyaki.noodleSoba)
                         |> .noodles
                         |> Expect.equal []
             ]
-        , describe "addTopping"
-            [ test "新規トッピングは quantity=1 で追加される" <|
+        , describe "ToggleTopping"
+            [ test "未選択なら quantity=1 で追加される" <|
                 \_ ->
                     Okonomiyaki.init Okonomiyaki.Yasai
-                        |> Okonomiyaki.addTopping Okonomiyaki.toppingIkaten
+                        |> Okonomiyaki.update (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten)
                         |> .toppings
                         |> List.map (\t -> ( t.topping.kind, t.quantity ))
                         |> Expect.equal [ ( Okonomiyaki.ToppingKindIkaten, 1 ) ]
-            , test "既存トッピングは quantity+1 される" <|
-                \_ ->
-                    Okonomiyaki.init Okonomiyaki.Yasai
-                        |> Okonomiyaki.addTopping Okonomiyaki.toppingIkaten
-                        |> Okonomiyaki.addTopping Okonomiyaki.toppingIkaten
-                        |> .toppings
-                        |> List.map (\t -> ( t.topping.kind, t.quantity ))
-                        |> Expect.equal [ ( Okonomiyaki.ToppingKindIkaten, 2 ) ]
-            ]
-        , describe "removeTopping"
-            [ test "指定種類のトッピングが削除される" <|
-                \_ ->
-                    Okonomiyaki.init Okonomiyaki.Yasai
-                        |> Okonomiyaki.addTopping Okonomiyaki.toppingIkaten
-                        |> Okonomiyaki.removeTopping Okonomiyaki.ToppingKindIkaten
-                        |> .toppings
-                        |> Expect.equal []
-            ]
-        , describe "toggleTopping"
-            [ test "未選択なら追加される" <|
-                \_ ->
-                    Okonomiyaki.init Okonomiyaki.Yasai
-                        |> Okonomiyaki.toggleTopping Okonomiyaki.toppingIkaten
-                        |> .toppings
-                        |> List.map (\t -> t.topping.kind)
-                        |> Expect.equal [ Okonomiyaki.ToppingKindIkaten ]
             , test "選択済みなら削除される" <|
                 \_ ->
                     Okonomiyaki.init Okonomiyaki.Yasai
-                        |> Okonomiyaki.toggleTopping Okonomiyaki.toppingIkaten
-                        |> Okonomiyaki.toggleTopping Okonomiyaki.toppingIkaten
+                        |> Okonomiyaki.update (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten)
+                        |> Okonomiyaki.update (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten)
                         |> .toppings
                         |> Expect.equal []
             ]

@@ -39,7 +39,7 @@ suite =
                 \_ ->
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
+                        |> Order.updateOkonomiyakiAt 0 (Okonomiyaki.IncrementNoodle Okonomiyaki.noodleSoba)
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×2)（1玉） = 1200
                         |> Expect.equal 1200
@@ -47,16 +47,16 @@ suite =
                 \_ ->
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addToppingToLastBase Okonomiyaki.toppingIkaten
+                        |> Order.updateOkonomiyakiAt 0 (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten)
                         |> Order.calculateTotal
                         |> Expect.equal 1100
             , test "複雑な注文の合計" <|
                 \_ ->
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
-                        |> Order.addToppingToLastBase Okonomiyaki.toppingIkaten
-                        |> Order.addToppingToLastBase Okonomiyaki.toppingNegi
+                        |> Order.updateOkonomiyakiAt 0 (Okonomiyaki.IncrementNoodle Okonomiyaki.noodleSoba)
+                        |> Order.updateOkonomiyakiAt 0 (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten)
+                        |> Order.updateOkonomiyakiAt 0 (Okonomiyaki.ToggleTopping Okonomiyaki.toppingNegi)
                         |> Order.addStandaloneItem MenuData.grilledKaki
                         |> Order.addStandaloneItem MenuData.drinkBeer
                         |> Order.calculateTotal
@@ -71,7 +71,7 @@ suite =
                         order =
                             Order.emptyOrder
                                 |> Order.addBaseItem Okonomiyaki.Yasai
-                                |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
+                                |> Order.updateOkonomiyakiAt 0 (Okonomiyaki.IncrementNoodle Okonomiyaki.noodleSoba)
 
                         orderWithQuantity =
                             { order
@@ -178,86 +178,6 @@ suite =
                     List.length order.items
                         |> Expect.equal 0
             ]
-        , describe "麺の数量操作"
-            [ test "麺追加時は1玉（Whole 1）" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
-                        |> Order.calculateTotal
-                        -- 900 + (100 + 100×2) = 1200
-                        |> Expect.equal 1200
-            , test "麺の数量を増やす（1玉→1.5玉）" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
-                        |> Order.incrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.calculateTotal
-                        -- 900 + (100 + 100×3) = 1300
-                        |> Expect.equal 1300
-            , test "麺の数量を減らす（1玉→0.5玉）" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
-                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.calculateTotal
-                        -- 900 + (100 + 100×1) = 1100
-                        |> Expect.equal 1100
-            , test "0.5玉から減らすと麺が削除される" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
-                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.calculateTotal
-                        -- 麺なし: 900
-                        |> Expect.equal 900
-            , test "そばとうどんを同時に追加できる" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleUdon
-                        |> Order.calculateTotal
-                        -- 900 + (100 + 100×4) = 1400
-                        |> Expect.equal 1400
-            , test "複数麺のうち片方を削除しても他方が残る" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleUdon
-                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.calculateTotal
-                        -- うどんのみ残る: udonBase(1200)
-                        |> Expect.equal 1200
-            , test "ちゃんぽん（そば0.5玉 + うどん0.5玉 = 1玉）" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleUdon
-                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleUdon
-                        |> Order.calculateTotal
-                        -- 900 + (100 + 100×2) = 1200
-                        |> Expect.equal 1200
-            , test "ちゃんぽん（そば1.5玉 + うどん0.5玉 = 2玉）" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Yasai
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
-                        |> Order.incrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.addNoodleToLastBase Okonomiyaki.noodleUdon
-                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleUdon
-                        |> Order.calculateTotal
-                        -- 900 + (100 + 100×4) = 1400
-                        |> Expect.equal 1400
-            ]
         , describe "そば入り・うどん入りの価格計算"
             [ test "そば入り単体は1200円" <|
                 \_ ->
@@ -273,31 +193,5 @@ suite =
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×2)（うどん1玉）= 1200
                         |> Expect.equal 1200
-            , test "そば入り＋そば0.5玉追加は1300円（そば1.5玉）" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Soba
-                        |> Order.incrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        -- 900 + (100 + 100×3)（そば1.5玉）= 1300
-                        |> Order.calculateTotal
-                        |> Expect.equal 1300
-            , test "そば入り＋イカ天は1400円" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Soba
-                        |> Order.addToppingToLastBase Okonomiyaki.toppingIkaten
-                        -- 900 + (100 + 100×2) + 200 = 1400
-                        |> Order.calculateTotal
-                        |> Expect.equal 1400
-            , test "そば入りのそばを全部減らすとYasaiに切り替わる" <|
-                \_ ->
-                    Order.emptyOrder
-                        |> Order.addBaseItem Okonomiyaki.Soba
-                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        -- Whole 1 → HalfBall → 削除
-                        |> Order.calculateTotal
-                        -- 900（麺なし）
-                        |> Expect.equal 900
             ]
         ]
