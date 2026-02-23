@@ -11,6 +11,7 @@ module Okonomiyaki exposing
     , addTopping
     , allNoodles
     , allToppings
+    , baseKind
     , baseName
     , calculateTotal
     , decrementNoodle
@@ -18,7 +19,6 @@ module Okonomiyaki exposing
     , noodleQuantityDisplay
     , noodleSoba
     , noodleUdon
-    , normalizeBase
     , removeTopping
     , toggleTopping
     , toppingCheese
@@ -41,12 +41,12 @@ module Okonomiyaki exposing
     `MenuItem` ↔ `BaseKind` の変換は `MenuData` モジュールが担う。
   - **麺の独立**: 麺は `Noodle` 型で表現する。
     麺の識別・価格計算・注文操作はすべてこのモジュール内で完結する。
-  - **ベース**: 各ベースは込み麺を持つ場合がある。
-    ベース情報へのアクセスには `baseName` ヘルパー関数を使用する。
+  - **ベース**: `Okonomiyaki` 型は `base` フィールドを持たない。
+    ベースは麺・トッピングの状態から `baseKind` で算出される**導出値**である。
+    これにより、不整合なデータ状態が構造的に不可能になる。
+    ベース情報へのアクセスには `baseName` や `baseKind` ヘルパー関数を使用する。
   - **麺の数量** は内部的に「半玉単位」で管理する（quantity 2 = 1玉）。
     表示変換には `noodleQuantityDisplay` を使用する。
-  - `normalizeBase` は麺・トッピングの状態からベースを一意に決定する。
-    麺・トッピングの操作後にこの関数を1つ呼ぶだけで整合性が保たれる。
 
 -}
 
@@ -133,14 +133,13 @@ type alias NoodleAddition =
 
 {-| お好み焼き1枚の完全な構成。
 
-`base` にベースの種類（`BaseKind`）を持ち、
 `noodles` と `toppings` にそれぞれの追加オプションを格納する。
+ベース種類は `baseKind` で算出される導出値である。
 ベース名は `baseName` で取得できる。
 
 -}
 type alias Okonomiyaki =
-    { base : BaseKind
-    , noodles : List NoodleAddition
+    { noodles : List NoodleAddition
     , toppings : List ToppingAddition
     }
 
@@ -302,10 +301,45 @@ noodleQuantityDisplay internalQuantity =
 
 
 
+{-| お好み焼きの麺・トッピング状態からベース種類を一意に決定する。
+
+ベース決定ルール（優先順位順）:
+
+  1. イカとエビが両方 toppings にあれば → ZenbuIri
+  2. そばが noodles にあれば → Soba
+  3. うどんが noodles にあれば → Udon
+  4. いずれでもなければ → Yasai
+
+-}
+baseKind : Okonomiyaki -> BaseKind
+baseKind okonomiyaki =
+    let
+        hasSquid =
+            List.any (\t -> t.topping.kind == ToppingKindSquid) okonomiyaki.toppings
+
+        hasShrimp =
+            List.any (\t -> t.topping.kind == ToppingKindShrimp) okonomiyaki.toppings
+
+        hasNoodleKind noodleKind =
+            List.any (\n -> n.noodle.kind == noodleKind) okonomiyaki.noodles
+    in
+    if hasSquid && hasShrimp then
+        ZenbuIri
+
+    else if hasNoodleKind NoodleKindSoba then
+        Soba
+
+    else if hasNoodleKind NoodleKindUdon then
+        Udon
+
+    else
+        Yasai
+
+
 {-| お好み焼きのベース名を取得する。 -}
 baseName : Okonomiyaki -> String
 baseName okonomiyaki =
-    case okonomiyaki.base of
+    case baseKind okonomiyaki of
         Yasai ->
             yasaiPreset.name
 
@@ -344,50 +378,9 @@ init kind =
                 ZenbuIri ->
                     zenbuIriPreset
     in
-    { base = kind
-    , noodles = preset.defaultNoodles
+    { noodles = preset.defaultNoodles
     , toppings = preset.defaultToppings
     }
-
-
-{-| 麺・トッピングの状態からベースを一意に決定し、整合性を保つ。
-
-ベース決定ルール（優先順位順）:
-
-  1. イカとエビが両方 toppings にあれば → ZenbuIri
-  2. そばが noodles にあれば → Soba
-  3. うどんが noodles にあれば → Udon
-  4. いずれでもなければ → Yasai
-
-麺・トッピングのいずれの操作後にも、この関数を1つ呼ぶだけでベースの整合性が保たれる。
-
--}
-normalizeBase : Okonomiyaki -> Okonomiyaki
-normalizeBase baseItem =
-    let
-        hasSquid =
-            List.any (\t -> t.topping.kind == ToppingKindSquid) baseItem.toppings
-
-        hasShrimp =
-            List.any (\t -> t.topping.kind == ToppingKindShrimp) baseItem.toppings
-
-        hasNoodleKind noodleKind =
-            List.any (\n -> n.noodle.kind == noodleKind) baseItem.noodles
-
-        newBaseKind =
-            if hasSquid && hasShrimp then
-                ZenbuIri
-
-            else if hasNoodleKind NoodleKindSoba then
-                Soba
-
-            else if hasNoodleKind NoodleKindUdon then
-                Udon
-
-            else
-                Yasai
-    in
-    { baseItem | base = newBaseKind }
 
 
 {-| お好み焼き1枚あたりの金額を計算する。
@@ -403,17 +396,17 @@ normalizeBase baseItem =
 
 **割引ルール：**
 
-  - イカとエビが同時にトッピングされている場合、300円割引を適用する。
+  - 全部入り（ZenbuIri）の場合、300円割引を適用する。
 
 -}
 calculateTotal : Okonomiyaki -> Int
-calculateTotal baseItem =
+calculateTotal okonomiyaki =
     let
         baseOkonomiyakiPrice =
             900
 
         totalNoodleQuantity =
-            baseItem.noodles
+            okonomiyaki.noodles
                 |> List.map .quantity
                 |> List.sum
 
@@ -426,18 +419,12 @@ calculateTotal baseItem =
                 100 + 100 * totalNoodleQuantity
 
         toppingsPrice =
-            baseItem.toppings
+            okonomiyaki.toppings
                 |> List.map (\t -> t.topping.price * t.quantity)
                 |> List.sum
 
-        hasSquid =
-            List.any (\t -> t.topping.kind == ToppingKindSquid) baseItem.toppings
-
-        hasShrimp =
-            List.any (\t -> t.topping.kind == ToppingKindShrimp) baseItem.toppings
-
         zenbuIriDiscount =
-            if hasSquid && hasShrimp then
+            if baseKind okonomiyaki == ZenbuIri then
                 300
 
             else

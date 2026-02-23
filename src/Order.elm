@@ -1,4 +1,4 @@
-module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, normalizeBase, BaseOrderItem)
+module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, addNoodleToLastBase, addToppingToLastBase, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementNoodleQuantity, decrementNoodleQuantity, toggleTopping, incrementStandaloneQuantity, decrementStandaloneQuantity, BaseOrderItem)
 
 import Menu exposing (MenuItem)
 import Okonomiyaki exposing (Noodle, Okonomiyaki, Topping)
@@ -155,14 +155,12 @@ getLastBaseItemIndex order =
         |> List.head
 
 
--- 最後のお好み焼きに麺を追加し、ベースを正規化する
+-- 最後のお好み焼きに麺を追加する
 addNoodleToLastBase : Noodle -> Order -> Order
 addNoodleToLastBase noodle order =
     case getLastBaseItemIndex order of
         Just idx ->
-            order
-                |> updateBaseItemAt idx (Okonomiyaki.addNoodle noodle)
-                |> normalizeBase idx
+            updateBaseItemAt idx (Okonomiyaki.addNoodle noodle) order
 
         Nothing ->
             order
@@ -304,9 +302,3 @@ calculateTotal order =
                         standaloneItem.menuItem.price * standaloneItem.quantity
             )
         |> List.sum
-
-
--- 麺・トッピング操作後に呼ぶ。ベースを麺・トッピングの状態から一意に決定する
-normalizeBase : Int -> Order -> Order
-normalizeBase index order =
-    updateBaseItemAt index Okonomiyaki.normalizeBase order

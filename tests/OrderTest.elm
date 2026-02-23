@@ -212,7 +212,6 @@ suite =
                         |> Order.addNoodleToLastBase Okonomiyaki.noodleSoba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.normalizeBase 0
                         |> Order.calculateTotal
                         -- 麺なし: 900
                         |> Expect.equal 900
@@ -233,7 +232,6 @@ suite =
                         |> Order.addNoodleToLastBase Okonomiyaki.noodleUdon
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        |> Order.normalizeBase 0
                         |> Order.calculateTotal
                         -- うどんのみ残る: udonBase(1200)
                         |> Expect.equal 1200
@@ -291,14 +289,13 @@ suite =
                         -- 900 + (100 + 100×2) + 200 = 1400
                         |> Order.calculateTotal
                         |> Expect.equal 1400
-            , test "そば入りのそばを全部減らすとbaseYasaiに切り替わる" <|
+            , test "そば入りのそばを全部減らすとYasaiに切り替わる" <|
                 \_ ->
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.Soba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         -- qty: 2 → 1 → 0（削除）
-                        |> Order.normalizeBase 0
                         |> Order.calculateTotal
                         -- 900（麺なし）
                         |> Expect.equal 900
