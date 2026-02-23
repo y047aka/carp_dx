@@ -3,11 +3,11 @@ module Okonomiyaki exposing
     , Noodle
     , NoodleAddition
     , NoodleKind(..)
+    , NoodleQuantity(..)
     , Okonomiyaki
     , Topping
     , ToppingAddition
     , ToppingKind(..)
-    , addNoodle
     , addTopping
     , allNoodles
     , allToppings
@@ -15,7 +15,9 @@ module Okonomiyaki exposing
     , baseName
     , calculateTotal
     , decrementNoodle
+    , incrementNoodle
     , init
+    , noodleAdditionPrice
     , noodleQuantityDisplay
     , noodleSoba
     , noodleUdon
@@ -45,8 +47,12 @@ module Okonomiyaki exposing
     ベースは麺・トッピングの状態から `baseKind` で算出される**導出値**である。
     これにより、不整合なデータ状態が構造的に不可能になる。
     ベース情報へのアクセスには `baseName` や `baseKind` ヘルパー関数を使用する。
-  - **麺の数量** は内部的に「半玉単位」で管理する（quantity 2 = 1玉）。
+  - **麺の数量** は `NoodleQuantity` 型で表現する。
+    `HalfBall`（0.5玉）、`Whole n`（n玉）、`WholeAndHalf n`（n.5玉）の3パターンで、
+    不正な数量状態が型レベルで不可能になる。
     表示変換には `noodleQuantityDisplay` を使用する。
+  - **麺の価格** はモジュール内部定数で一元管理する。
+    表示用の個別価格は `noodleAdditionPrice` で取得できる。
 
 -}
 
@@ -79,6 +85,21 @@ type BaseKind
     | ZenbuIri
 
 
+{-| 麺の数量。0.5玉単位で増減できる。
+
+  - `HalfBall` は 0.5玉
+  - `Whole n` は n玉（n >= 1）
+  - `WholeAndHalf n` は n.5玉（n >= 1）
+
+`NoodleAddition.quantity` フィールドで使用する。
+`incrementNoodleQuantity` / `decrementNoodleQuantity` で増減できる。
+
+-}
+type NoodleQuantity
+    = HalfBall
+    | Whole Int
+    | WholeAndHalf Int
+
 
 {-| お好み焼きに追加できるトッピングのドメイン情報。
 
@@ -97,15 +118,15 @@ type alias Topping =
 {-| 麺のドメイン情報。お好み焼きドメイン専用の型。
 
   - `kind` は麺の種類（同一性の識別に使用）
-  - `basePrice` は麺の入場料（最初の1玉に加算される固定料金）
-  - `pricePerHalfBall` は0.5玉あたりの追加料金
+  - `name` は表示名
+
+麺の価格はモジュール内定数（入場料・半玉単価）で管理する。
+個別の麺追加分の価格は `noodleAdditionPrice` で取得できる。
 
 -}
 type alias Noodle =
     { kind : NoodleKind
     , name : String
-    , basePrice : Int
-    , pricePerHalfBall : Int
     }
 
 
@@ -122,12 +143,12 @@ type alias ToppingAddition =
 
 {-| お好み焼きに付属する麺の追加オプション。
 
-`quantity` は半玉単位（`2` = 1玉）。
+`quantity` は `NoodleQuantity` 型で表現する。
 
 -}
 type alias NoodleAddition =
     { noodle : Noodle
-    , quantity : Int
+    , quantity : NoodleQuantity
     }
 
 
@@ -142,6 +163,21 @@ type alias Okonomiyaki =
     { noodles : List NoodleAddition
     , toppings : List ToppingAddition
     }
+
+
+-- 価格定数（モジュール内部）
+
+
+{-| 麺の入場料。麺がある場合、全麺合計で1回だけ加算される。 -}
+noodleEntryPrice : Int
+noodleEntryPrice =
+    100
+
+
+{-| 半玉あたりの追加料金。 -}
+noodleHalfBallPrice : Int
+noodleHalfBallPrice =
+    100
 
 
 -- マスタデータ：BasePreset
@@ -165,7 +201,7 @@ yasaiPreset =
 sobaPreset : BasePreset
 sobaPreset =
     { name = "そば入り"
-    , defaultNoodles = [ { noodle = noodleSoba, quantity = 2 } ]
+    , defaultNoodles = [ { noodle = noodleSoba, quantity = Whole 1 } ]
     , defaultToppings = []
     }
 
@@ -173,7 +209,7 @@ sobaPreset =
 udonPreset : BasePreset
 udonPreset =
     { name = "うどん入り"
-    , defaultNoodles = [ { noodle = noodleUdon, quantity = 2 } ]
+    , defaultNoodles = [ { noodle = noodleUdon, quantity = Whole 1 } ]
     , defaultToppings = []
     }
 
@@ -181,7 +217,7 @@ udonPreset =
 zenbuIriPreset : BasePreset
 zenbuIriPreset =
     { name = "全部入り"
-    , defaultNoodles = [ { noodle = noodleSoba, quantity = 2 } ]
+    , defaultNoodles = [ { noodle = noodleSoba, quantity = Whole 1 } ]
     , defaultToppings =
         [ { topping = toppingSquid, quantity = 1 }
         , { topping = toppingShrimp, quantity = 1 }
@@ -243,23 +279,19 @@ allToppings =
 -- マスタデータ：麺
 
 
-{-| そば（basePrice: 100円、pricePerHalfBall: 100円）。 -}
+{-| そば。 -}
 noodleSoba : Noodle
 noodleSoba =
     { kind = NoodleKindSoba
     , name = "そば"
-    , basePrice = 100
-    , pricePerHalfBall = 100
     }
 
 
-{-| うどん（basePrice: 100円、pricePerHalfBall: 100円）。 -}
+{-| うどん。 -}
 noodleUdon : Noodle
 noodleUdon =
     { kind = NoodleKindUdon
     , name = "うどん"
-    , basePrice = 100
-    , pricePerHalfBall = 100
     }
 
 
@@ -272,33 +304,83 @@ allNoodles =
 -- 表示・クエリ
 
 
-{-| 麺の内部 quantity 値（半玉単位）を表示用文字列に変換する。
+{-| `NoodleQuantity` を表示用文字列に変換する。
 
-    noodleQuantityDisplay 1  == "0.5"
-    noodleQuantityDisplay 2  == "1"
-    noodleQuantityDisplay 3  == "1.5"
-    noodleQuantityDisplay 4  == "2"
+    noodleQuantityDisplay HalfBall         == "0.5"
+    noodleQuantityDisplay (Whole 1)        == "1"
+    noodleQuantityDisplay (WholeAndHalf 1) == "1.5"
+    noodleQuantityDisplay (Whole 2)        == "2"
 
 -}
-noodleQuantityDisplay : Int -> String
-noodleQuantityDisplay internalQuantity =
-    let
-        wholePart =
-            internalQuantity // 2
-
-        hasHalf =
-            modBy 2 internalQuantity /= 0
-    in
-    if hasHalf then
-        if wholePart == 0 then
+noodleQuantityDisplay : NoodleQuantity -> String
+noodleQuantityDisplay q =
+    case q of
+        HalfBall ->
             "0.5"
 
-        else
-            String.fromInt wholePart ++ ".5"
+        Whole n ->
+            String.fromInt n
 
-    else
-        String.fromInt wholePart
+        WholeAndHalf n ->
+            String.fromInt n ++ ".5"
 
+
+{-| 麺追加1件分の価格を計算する（表示用）。
+
+計算式：入場料（100円）＋ 半玉単価（100円）× 半玉数
+
+複数麺がある場合の「入場料は全麺合計で1回だけ」というルールは
+`calculateTotal` が担保する。この関数は個別の表示目的に使用する。
+
+-}
+noodleAdditionPrice : NoodleAddition -> Int
+noodleAdditionPrice na =
+    noodleEntryPrice + noodleHalfBallPrice * toHalfBallCount na.quantity
+
+
+{-| `NoodleQuantity` を半玉単位の整数に変換する（内部計算用）。 -}
+toHalfBallCount : NoodleQuantity -> Int
+toHalfBallCount q =
+    case q of
+        HalfBall ->
+            1
+
+        Whole n ->
+            2 * n
+
+        WholeAndHalf n ->
+            2 * n + 1
+
+
+{-| `NoodleQuantity` を0.5玉増やす。 -}
+incrementNoodleQuantity : NoodleQuantity -> NoodleQuantity
+incrementNoodleQuantity q =
+    case q of
+        HalfBall ->
+            Whole 1
+
+        Whole n ->
+            WholeAndHalf n
+
+        WholeAndHalf n ->
+            Whole (n + 1)
+
+
+{-| `NoodleQuantity` を0.5玉減らす。0.5玉より少なくなる場合は `Nothing` を返す。 -}
+decrementNoodleQuantity : NoodleQuantity -> Maybe NoodleQuantity
+decrementNoodleQuantity q =
+    case q of
+        HalfBall ->
+            Nothing
+
+        Whole 1 ->
+            Just HalfBall
+
+        Whole n ->
+            Just (WholeAndHalf (n - 1))
+
+        WholeAndHalf n ->
+            Just (Whole n)
 
 
 {-| お好み焼きの麺・トッピング状態からベース種類を一意に決定する。
@@ -390,9 +472,9 @@ init kind =
 **麺の料金ルール：**
 
   - 麺がなければ 0円。
-  - 麺がある場合：入場料（100円）は全麺合計で1回だけ加算、半玉単価（100円）× 合計quantity。
-    例：そば1玉（quantity=2）→ 100 + 100×2 = 300円。
-    例：そば1玉 + うどん1玉（合計quantity=4）→ 100 + 100×4 = 500円。
+  - 麺がある場合：入場料（100円）は全麺合計で1回だけ加算、半玉単価（100円）× 合計半玉数。
+    例：そば1玉 → 100 + 100×2 = 300円。
+    例：そば1玉 + うどん1玉（合計4半玉）→ 100 + 100×4 = 500円。
 
 **割引ルール：**
 
@@ -405,18 +487,18 @@ calculateTotal okonomiyaki =
         baseOkonomiyakiPrice =
             900
 
-        totalNoodleQuantity =
+        totalHalfBalls =
             okonomiyaki.noodles
-                |> List.map .quantity
+                |> List.map (.quantity >> toHalfBallCount)
                 |> List.sum
 
         noodlePrice =
-            if totalNoodleQuantity == 0 then
+            if totalHalfBalls == 0 then
                 0
 
             else
-                -- 入場料（100円）は麺全体で1回だけ加算、半玉単価（100円）× 合計quantity
-                100 + 100 * totalNoodleQuantity
+                -- 入場料は麺全体で1回だけ加算、半玉単価 × 合計半玉数
+                noodleEntryPrice + noodleHalfBallPrice * totalHalfBalls
 
         toppingsPrice =
             okonomiyaki.toppings
@@ -436,9 +518,9 @@ calculateTotal okonomiyaki =
 -- 操作
 
 
-{-| 麺を追加する。既存の同種麺があれば半玉（quantity+1）追加、なければ1玉（quantity=2）で新規追加する。 -}
-addNoodle : Noodle -> Okonomiyaki -> Okonomiyaki
-addNoodle noodle item =
+{-| 麺を0.5玉増やす。同種の麺があれば `incrementNoodleQuantity` で増量、なければ1玉（`Whole 1`）で新規追加する。 -}
+incrementNoodle : Noodle -> Okonomiyaki -> Okonomiyaki
+incrementNoodle noodle item =
     let
         hasExisting =
             List.any (\n -> n.noodle.kind == noodle.kind) item.noodles
@@ -449,7 +531,7 @@ addNoodle noodle item =
                 List.map
                     (\n ->
                         if n.noodle.kind == noodle.kind then
-                            { n | quantity = n.quantity + 1 }
+                            { n | quantity = incrementNoodleQuantity n.quantity }
 
                         else
                             n
@@ -458,24 +540,24 @@ addNoodle noodle item =
         }
 
     else
-        { item | noodles = item.noodles ++ [ { noodle = noodle, quantity = 2 } ] }
+        { item | noodles = item.noodles ++ [ { noodle = noodle, quantity = Whole 1 } ] }
 
 
-{-| 麺を半玉（quantity-1）減らす。0以下になったら削除する。 -}
+{-| 麺を0.5玉減らす。`HalfBall`（0.5玉）から減らすと削除される。 -}
 decrementNoodle : Noodle -> Okonomiyaki -> Okonomiyaki
 decrementNoodle noodle item =
     { item
         | noodles =
-            List.map
+            List.filterMap
                 (\n ->
                     if n.noodle.kind == noodle.kind then
-                        { n | quantity = max 0 (n.quantity - 1) }
+                        decrementNoodleQuantity n.quantity
+                            |> Maybe.map (\q -> { n | quantity = q })
 
                     else
-                        n
+                        Just n
                 )
                 item.noodles
-                |> List.filter (\n -> n.quantity > 0)
     }
 
 

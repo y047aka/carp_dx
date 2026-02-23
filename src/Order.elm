@@ -160,7 +160,7 @@ addNoodleToLastBase : Noodle -> Order -> Order
 addNoodleToLastBase noodle order =
     case getLastBaseItemIndex order of
         Just idx ->
-            updateBaseItemAt idx (Okonomiyaki.addNoodle noodle) order
+            updateBaseItemAt idx (Okonomiyaki.incrementNoodle noodle) order
 
         Nothing ->
             order
@@ -226,7 +226,7 @@ decrementBaseQuantity index order =
 -- 麺の数量を増やす（0.5玉単位、新規追加にも対応）
 incrementNoodleQuantity : Int -> Noodle -> Order -> Order
 incrementNoodleQuantity baseIndex noodle order =
-    updateBaseItemAt baseIndex (Okonomiyaki.addNoodle noodle) order
+    updateBaseItemAt baseIndex (Okonomiyaki.incrementNoodle noodle) order
 
 
 -- 麺の数量を減らす（0.5玉単位、0になったら削除）

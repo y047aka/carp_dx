@@ -179,7 +179,7 @@ suite =
                         |> Expect.equal 0
             ]
         , describe "麺の数量操作"
-            [ test "麺追加時は1玉（内部quantity=2）" <|
+            [ test "麺追加時は1玉（Whole 1）" <|
                 \_ ->
                     Order.emptyOrder
                         |> Order.addBaseItem Okonomiyaki.Yasai
@@ -295,7 +295,7 @@ suite =
                         |> Order.addBaseItem Okonomiyaki.Soba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
                         |> Order.decrementNoodleQuantity 0 Okonomiyaki.noodleSoba
-                        -- qty: 2 → 1 → 0（削除）
+                        -- Whole 1 → HalfBall → 削除
                         |> Order.calculateTotal
                         -- 900（麺なし）
                         |> Expect.equal 900
