@@ -79,10 +79,6 @@ type BaseKind
     | ZenbuIri
 
 
-type alias BaseInfo =
-    { name : String
-    }
-
 
 {-| お好み焼きに追加できるトッピングのドメイン情報。
 
@@ -149,31 +145,49 @@ type alias Okonomiyaki =
     }
 
 
--- マスタデータ：BaseInfo
+-- マスタデータ：BasePreset
 
 
-{-| 野菜入りのベースドメイン情報。 -}
-baseYasaiBase : BaseInfo
-baseYasaiBase =
-    { name = "野菜入り" }
+type alias BasePreset =
+    { name : String
+    , defaultNoodles : List NoodleAddition
+    , defaultToppings : List ToppingAddition
+    }
 
 
-{-| そば入りのベースドメイン情報。 -}
-baseSobaBase : BaseInfo
-baseSobaBase =
-    { name = "そば入り" }
+yasaiPreset : BasePreset
+yasaiPreset =
+    { name = "野菜入り"
+    , defaultNoodles = []
+    , defaultToppings = []
+    }
 
 
-{-| うどん入りのベースドメイン情報。 -}
-baseUdonBase : BaseInfo
-baseUdonBase =
-    { name = "うどん入り" }
+sobaPreset : BasePreset
+sobaPreset =
+    { name = "そば入り"
+    , defaultNoodles = [ { noodle = noodleSoba, quantity = 2 } ]
+    , defaultToppings = []
+    }
 
 
-{-| 全部入りのベースドメイン情報。 -}
-baseZenbuIriBase : BaseInfo
-baseZenbuIriBase =
-    { name = "全部入り" }
+udonPreset : BasePreset
+udonPreset =
+    { name = "うどん入り"
+    , defaultNoodles = [ { noodle = noodleUdon, quantity = 2 } ]
+    , defaultToppings = []
+    }
+
+
+zenbuIriPreset : BasePreset
+zenbuIriPreset =
+    { name = "全部入り"
+    , defaultNoodles = [ { noodle = noodleSoba, quantity = 2 } ]
+    , defaultToppings =
+        [ { topping = toppingSquid, quantity = 1 }
+        , { topping = toppingShrimp, quantity = 1 }
+        ]
+    }
 
 
 -- マスタデータ：トッピング
@@ -291,24 +305,18 @@ noodleQuantityDisplay internalQuantity =
 {-| お好み焼きのベース名を取得する。 -}
 baseName : Okonomiyaki -> String
 baseName okonomiyaki =
-    (kindToBase okonomiyaki.base).name
-
-
--- `BaseKind` からマスタデータ `BaseInfo` を取得する内部関数。
-kindToBase : BaseKind -> BaseInfo
-kindToBase kind =
-    case kind of
+    case okonomiyaki.base of
         Yasai ->
-            baseYasaiBase
+            yasaiPreset.name
 
         Soba ->
-            baseSobaBase
+            sobaPreset.name
 
         Udon ->
-            baseUdonBase
+            udonPreset.name
 
         ZenbuIri ->
-            baseZenbuIriBase
+            zenbuIriPreset.name
 
 
 -- 構築・正規化・計算
@@ -316,33 +324,29 @@ kindToBase kind =
 
 {-| `BaseKind` から初期 `Okonomiyaki` を生成する。
 
-各 `BaseKind` に対する初期の麺・トッピング構成を `kind` の単一パターンマッチで決定する。
+初期の麺・トッピング構成は `BasePreset` マスタデータから取得する。
 
 -}
 init : BaseKind -> Okonomiyaki
 init kind =
     let
-        ( initialNoodles, initialToppings ) =
+        preset =
             case kind of
                 Yasai ->
-                    ( [], [] )
+                    yasaiPreset
 
                 Soba ->
-                    ( [ { noodle = noodleSoba, quantity = 2 } ], [] )
+                    sobaPreset
 
                 Udon ->
-                    ( [ { noodle = noodleUdon, quantity = 2 } ], [] )
+                    udonPreset
 
                 ZenbuIri ->
-                    ( [ { noodle = noodleSoba, quantity = 2 } ]
-                    , [ { topping = toppingSquid, quantity = 1 }
-                      , { topping = toppingShrimp, quantity = 1 }
-                      ]
-                    )
+                    zenbuIriPreset
     in
     { base = kind
-    , noodles = initialNoodles
-    , toppings = initialToppings
+    , noodles = preset.defaultNoodles
+    , toppings = preset.defaultToppings
     }
 
 
