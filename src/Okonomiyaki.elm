@@ -337,42 +337,29 @@ kindToBase kind =
 
 {-| `BaseKind` から初期 `Okonomiyaki` を生成する。
 
-`includedNoodleKind` を持つベースの場合、`noodles` に1玉（`quantity = 2`）をセットする。
-`includedNoodleKind` を持たない `Yasai` の場合、`noodles` は空になる。
-`ZenbuIri` の場合、`noodles` にそば1玉をセットし、`toppings` にイカ・エビをセットする。
+各 `BaseKind` に対する初期の麺・トッピング構成を `kind` の単一パターンマッチで決定する。
 
 -}
 init : BaseKind -> Okonomiyaki
 init kind =
     let
-        base =
-            kindToBase kind
-
-        initialNoodles =
-            case base.includedNoodleKind of
-                Just NoodleKindSoba ->
-                    [ { noodle = noodleSoba, quantity = 2 } ]
-
-                Just NoodleKindUdon ->
-                    [ { noodle = noodleUdon, quantity = 2 } ]
-
-                Nothing ->
-                    case kind of
-                        ZenbuIri ->
-                            [ { noodle = noodleSoba, quantity = 2 } ]
-
-                        _ ->
-                            []
-
-        initialToppings =
+        ( initialNoodles, initialToppings ) =
             case kind of
-                ZenbuIri ->
-                    [ { topping = toppingSquid, quantity = 1 }
-                    , { topping = toppingShrimp, quantity = 1 }
-                    ]
+                Yasai ->
+                    ( [], [] )
 
-                _ ->
-                    []
+                Soba ->
+                    ( [ { noodle = noodleSoba, quantity = 2 } ], [] )
+
+                Udon ->
+                    ( [ { noodle = noodleUdon, quantity = 2 } ], [] )
+
+                ZenbuIri ->
+                    ( [ { noodle = noodleSoba, quantity = 2 } ]
+                    , [ { topping = toppingSquid, quantity = 1 }
+                      , { topping = toppingShrimp, quantity = 1 }
+                      ]
+                    )
     in
     { base = kind
     , noodles = initialNoodles
