@@ -33,7 +33,14 @@ suite =
             ]
         , describe "飲み物"
             [ testMenuItem "ビール（瓶）" 750 drinkBeer
-            , testMenuItem "ソフトドリンク" 300 drinkSoft
+            , testMenuItem "ノンアルコールビール" 650 drinkNonAlcoholicBeer
+            , testMenuItem "島レモン" 700 drinkLemonBottole
+            , testMenuItem "レモンサワー" 600 drinkLemonCan
+            , testMenuItem "角ハイボール" 600 drinkHighBall
+            , testMenuItem "ウーロンハイ" 600 drinkOolongHigh
+            , testMenuItem "日本酒" 600 drinkSake
+            , testMenuItem "ウーロン茶" 300 drinkOolongTea
+            , testMenuItem "コーラ" 300 drinkCoke
             ]
         , describe "メニュー項目の整合性"
             [ test "すべてのメニュー項目にIDが設定されている" <|
@@ -51,11 +58,11 @@ suite =
                     allMenuItems
                         |> List.all (\item -> item.price > 0)
                         |> Expect.equal True
-            , test "全11品目が登録されている（ベース4種・焼き物5種・飲み物2種）" <|
+            , test "全18品目が登録されている（ベース4種・焼き物5種・飲み物9種）" <|
                 \_ ->
                     allMenuItems
                         |> List.length
-                        |> Expect.equal 11
+                        |> Expect.equal 18
             ]
         ]
 

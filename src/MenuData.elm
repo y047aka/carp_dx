@@ -11,7 +11,14 @@ module MenuData exposing
     , grilledNegiYaki
     , grilledTonpei
     , drinkBeer
-    , drinkSoft
+    , drinkNonAlcoholicBeer
+    , drinkLemonBottole
+    , drinkLemonCan
+    , drinkHighBall
+    , drinkOolongHigh
+    , drinkSake
+    , drinkOolongTea
+    , drinkCoke
     )
 
 import Menu exposing (MenuCategory(..), MenuItem)
@@ -161,10 +168,73 @@ drinkBeer =
     }
 
 
-drinkSoft : MenuItem
-drinkSoft =
-    { id = "drink-soft"
-    , name = "ソフトドリンク"
+drinkNonAlcoholicBeer : MenuItem
+drinkNonAlcoholicBeer =
+    { id = "drink-non-alcoholic-beer"
+    , name = "ノンアルコールビール"
+    , price = 650
+    , category = Drink
+    }
+
+
+drinkLemonBottole : MenuItem
+drinkLemonBottole =
+    { id = "drink-lemon-bottle"
+    , name = "島レモン"
+    , price = 700
+    , category = Drink
+    }
+
+
+drinkLemonCan : MenuItem
+drinkLemonCan =
+    { id = "drink-lemon-can"
+    , name = "レモンサワー"
+    , price = 600
+    , category = Drink
+    }
+
+
+drinkHighBall : MenuItem
+drinkHighBall =
+    { id = "drink-highball"
+    , name = "角ハイボール"
+    , price = 600
+    , category = Drink
+    }
+
+
+drinkOolongHigh : MenuItem
+drinkOolongHigh =
+    { id = "drink-oolong-high"
+    , name = "ウーロンハイ"
+    , price = 600
+    , category = Drink
+    }
+
+
+drinkSake : MenuItem
+drinkSake =
+    { id = "drink-sake"
+    , name = "日本酒"
+    , price = 600
+    , category = Drink
+    }
+
+
+drinkOolongTea : MenuItem
+drinkOolongTea =
+    { id = "drink-oolong-tea"
+    , name = "ウーロン茶"
+    , price = 300
+    , category = Drink
+    }
+
+
+drinkCoke : MenuItem
+drinkCoke =
+    { id = "drink-coke"
+    , name = "コーラ"
     , price = 300
     , category = Drink
     }
@@ -187,5 +257,12 @@ allMenuItems =
 
            -- 飲み物
            , drinkBeer
-           , drinkSoft
+           , drinkNonAlcoholicBeer
+           , drinkLemonBottole
+           , drinkLemonCan
+           , drinkHighBall
+           , drinkOolongHigh
+           , drinkSake
+           , drinkOolongTea
+           , drinkCoke
            ]
