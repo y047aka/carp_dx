@@ -3,7 +3,7 @@ module OrderTest exposing (suite)
 import Expect
 import MenuData
 import Okonomiyaki
-import Order exposing (OrderItemType(..))
+import Order exposing (OrderItemContent(..))
 import Test exposing (..)
 
 
@@ -67,28 +67,10 @@ suite =
                         |> Expect.equal 3900
             , test "お好み焼き複数個 + 独立商品の注文" <|
                 \_ ->
-                    let
-                        order =
-                            Order.emptyOrder
-                                |> Order.update (Order.AddOkonomiyaki Okonomiyaki.Yasai)
-                                |> Order.update (Order.EditOkonomiyaki 0 (Okonomiyaki.IncrementNoodle Okonomiyaki.noodleSoba))
-
-                        orderWithQuantity =
-                            { order
-                                | items =
-                                    List.map
-                                        (\item ->
-                                            case item of
-                                                BaseOrder baseOrderItem ->
-                                                    BaseOrder { baseOrderItem | quantity = 2 }
-
-                                                StandaloneOrder _ ->
-                                                    item
-                                        )
-                                        order.items
-                            }
-                    in
-                    orderWithQuantity
+                    Order.emptyOrder
+                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.Yasai)
+                        |> Order.update (Order.EditOkonomiyaki 0 (Okonomiyaki.IncrementNoodle Okonomiyaki.noodleSoba))
+                        |> Order.update (Order.IncrementQuantity 0)
                         |> Order.update (Order.AddStandaloneItem MenuData.drinkBeer)
                         |> Order.calculateTotal
                         -- お好み焼き2つ: (900 + (100 + 100×2)) × 2 = 2400
@@ -99,83 +81,53 @@ suite =
         , describe "注文操作"
             [ test "お好み焼きを追加する" <|
                 \_ ->
-                    let
-                        order =
-                            Order.emptyOrder
-                                |> Order.update (Order.AddOkonomiyaki Okonomiyaki.Yasai)
-                    in
-                    List.length order.items
+                    Order.emptyOrder
+                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.Yasai)
+                        |> .items
+                        |> List.length
                         |> Expect.equal 1
             , test "独立商品を追加する" <|
                 \_ ->
-                    let
-                        order =
-                            Order.emptyOrder
-                                |> Order.update (Order.AddStandaloneItem MenuData.grilledKaki)
-                    in
-                    List.length order.items
+                    Order.emptyOrder
+                        |> Order.update (Order.AddStandaloneItem MenuData.grilledKaki)
+                        |> .items
+                        |> List.length
                         |> Expect.equal 1
             , test "同じ独立商品を複数回追加すると数量が増える" <|
                 \_ ->
-                    let
-                        order =
-                            Order.emptyOrder
-                                |> Order.update (Order.AddStandaloneItem MenuData.drinkBeer)
-                                |> Order.update (Order.AddStandaloneItem MenuData.drinkBeer)
-
-                        firstItem =
-                            List.head order.items
-                    in
-                    case firstItem of
-                        Just (StandaloneOrder item) ->
-                            item.quantity |> Expect.equal 2
-
-                        _ ->
-                            Expect.fail "Expected a StandaloneOrder"
+                    Order.emptyOrder
+                        |> Order.update (Order.AddStandaloneItem MenuData.drinkBeer)
+                        |> Order.update (Order.AddStandaloneItem MenuData.drinkBeer)
+                        |> .items
+                        |> List.head
+                        |> Maybe.map .content
+                        |> Expect.equal (Just (StandaloneOrder { menuItem = MenuData.drinkBeer, quantity = 2 }))
             , test "お好み焼きの数量を増やす" <|
                 \_ ->
-                    let
-                        order =
-                            Order.emptyOrder
-                                |> Order.update (Order.AddOkonomiyaki Okonomiyaki.Yasai)
-                                |> Order.update (Order.IncrementOkonomiyakiQuantity 0)
-
-                        firstItem =
-                            List.head order.items
-                    in
-                    case firstItem of
-                        Just (BaseOrder baseOrderItem) ->
-                            baseOrderItem.quantity |> Expect.equal 2
-
-                        _ ->
-                            Expect.fail "Expected a BaseOrder"
+                    Order.emptyOrder
+                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.Yasai)
+                        |> Order.update (Order.IncrementQuantity 0)
+                        |> .items
+                        |> List.head
+                        |> Maybe.map .content
+                        |> Expect.equal (Just (BaseOrder { okonomiyaki = Okonomiyaki.init Okonomiyaki.Yasai, quantity = 2 }))
             , test "お好み焼きの数量を減らす" <|
                 \_ ->
-                    let
-                        order =
-                            Order.emptyOrder
-                                |> Order.update (Order.AddOkonomiyaki Okonomiyaki.Yasai)
-                                |> Order.update (Order.IncrementOkonomiyakiQuantity 0)
-                                |> Order.update (Order.DecrementOkonomiyakiQuantity 0)
-
-                        firstItem =
-                            List.head order.items
-                    in
-                    case firstItem of
-                        Just (BaseOrder baseOrderItem) ->
-                            baseOrderItem.quantity |> Expect.equal 1
-
-                        _ ->
-                            Expect.fail "Expected a BaseOrder"
+                    Order.emptyOrder
+                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.Yasai)
+                        |> Order.update (Order.IncrementQuantity 0)
+                        |> Order.update (Order.DecrementQuantity 0)
+                        |> .items
+                        |> List.head
+                        |> Maybe.map .content
+                        |> Expect.equal (Just (BaseOrder { okonomiyaki = Okonomiyaki.init Okonomiyaki.Yasai, quantity = 1 }))
             , test "お好み焼きの数量を1から減らすと削除される" <|
                 \_ ->
-                    let
-                        order =
-                            Order.emptyOrder
-                                |> Order.update (Order.AddOkonomiyaki Okonomiyaki.Yasai)
-                                |> Order.update (Order.DecrementOkonomiyakiQuantity 0)
-                    in
-                    List.length order.items
+                    Order.emptyOrder
+                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.Yasai)
+                        |> Order.update (Order.DecrementQuantity 0)
+                        |> .items
+                        |> List.length
                         |> Expect.equal 0
             ]
         , describe "そば入り・うどん入りの価格計算"

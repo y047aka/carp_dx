@@ -7,7 +7,7 @@ import Html.Events exposing (onClick)
 import Menu exposing (MenuCategory, MenuItem)
 import MenuData
 import Okonomiyaki exposing (Noodle, Okonomiyaki, Topping, ToppingAddition)
-import Order exposing (BaseOrderItem, Order, OrderItemType(..), StandaloneOrderItem)
+import Order exposing (BaseOrderItem, Order, OrderItem, OrderItemContent(..), OrderItemId, StandaloneOrderItem)
 
 
 main : Program () Model Msg
@@ -23,7 +23,7 @@ type alias Model =
     { currentOrder : Order
     , selectedCategory : MenuCategory
     , showCheckoutModal : Bool
-    , editingBaseIndex : Maybe Int
+    , editingBaseId : Maybe OrderItemId
     , isAddingNewBase : Bool
     }
 
@@ -33,7 +33,7 @@ init =
     { currentOrder = Order.emptyOrder
     , selectedCategory = Menu.Base
     , showCheckoutModal = False
-    , editingBaseIndex = Nothing
+    , editingBaseId = Nothing
     , isAddingNewBase = False
     }
 
@@ -46,7 +46,7 @@ type Msg
     | ShowCheckout
     | CloseCheckout
     | ResetOrder
-    | OpenEditModal Int
+    | OpenEditModal OrderItemId
     | CloseEditModal
 
 
@@ -62,15 +62,15 @@ update msg model =
                     case MenuData.menuItemToBaseKind menuItem of
                         Just kind ->
                             let
+                                newId =
+                                    model.currentOrder.nextId
+
                                 newOrder =
                                     Order.update (Order.AddOkonomiyaki kind) model.currentOrder
-
-                                lastIndex =
-                                    List.length newOrder.items - 1
                             in
                             { model
                                 | currentOrder = newOrder
-                                , editingBaseIndex = Just lastIndex
+                                , editingBaseId = Just newId
                                 , isAddingNewBase = True
                             }
 
@@ -87,18 +87,25 @@ update msg model =
                     { model | currentOrder = Order.update (Order.AddStandaloneItem menuItem) model.currentOrder }
 
         CancelAddingBase ->
-            let
-                newItems =
-                    List.take (List.length model.currentOrder.items - 1) model.currentOrder.items
+            case model.editingBaseId of
+                Just targetId ->
+                    let
+                        newOrder =
+                            { items = List.filter (\item -> item.id /= targetId) model.currentOrder.items
+                            , nextId = model.currentOrder.nextId
+                            }
+                    in
+                    { model
+                        | currentOrder = newOrder
+                        , editingBaseId = Nothing
+                        , isAddingNewBase = False
+                    }
 
-                newOrder =
-                    { items = newItems }
-            in
-            { model
-                | currentOrder = newOrder
-                , editingBaseIndex = Nothing
-                , isAddingNewBase = False
-            }
+                Nothing ->
+                    { model
+                        | editingBaseId = Nothing
+                        , isAddingNewBase = False
+                    }
 
         OrderMsg orderMsg ->
             { model | currentOrder = Order.update orderMsg model.currentOrder }
@@ -113,18 +120,18 @@ update msg model =
             { model
                 | currentOrder = Order.emptyOrder
                 , showCheckoutModal = False
-                , editingBaseIndex = Nothing
+                , editingBaseId = Nothing
             }
 
-        OpenEditModal index ->
+        OpenEditModal itemId ->
             { model
-                | editingBaseIndex = Just index
+                | editingBaseId = Just itemId
                 , isAddingNewBase = False
             }
 
         CloseEditModal ->
             { model
-                | editingBaseIndex = Nothing
+                | editingBaseId = Nothing
                 , isAddingNewBase = False
             }
 
@@ -166,7 +173,7 @@ view model =
             text ""
 
         -- 編集モーダル
-        , if model.editingBaseIndex /= Nothing then
+        , if model.editingBaseId /= Nothing then
             editBaseModal model
 
           else
@@ -209,14 +216,14 @@ menuItemCard item =
         ]
 
 
-getBaseItemByIndex : Int -> Order -> Maybe BaseOrderItem
-getBaseItemByIndex index order =
+getBaseItemById : OrderItemId -> Order -> Maybe BaseOrderItem
+getBaseItemById targetId order =
     order.items
-        |> List.drop index
+        |> List.filter (\item -> item.id == targetId)
         |> List.head
         |> Maybe.andThen
             (\item ->
-                case item of
+                case item.content of
                     BaseOrder baseOrderItem ->
                         Just baseOrderItem
 
@@ -239,7 +246,7 @@ orderSummary model =
             [ -- 注文リスト
               if hasItems then
                 div [ class "mb-4 max-h-48 overflow-y-auto" ]
-                    (List.indexedMap orderItemView model.currentOrder.items)
+                    (List.map orderItemView model.currentOrder.items)
 
               else
                 div [ class "text-center text-base-content/50 mb-4 py-4" ]
@@ -270,19 +277,19 @@ orderSummary model =
         ]
 
 
-orderItemView : Int -> OrderItemType -> Html Msg
-orderItemView index item =
-    case item of
+orderItemView : OrderItem -> Html Msg
+orderItemView item =
+    case item.content of
         BaseOrder baseOrderItem ->
-            baseOrderView index baseOrderItem
+            baseOrderView item.id baseOrderItem
 
         StandaloneOrder standaloneItem ->
-            standaloneOrderView standaloneItem
+            standaloneOrderView item.id standaloneItem
 
 
 
-baseOrderView : Int -> BaseOrderItem -> Html Msg
-baseOrderView index baseOrderItem =
+baseOrderView : OrderItemId -> BaseOrderItem -> Html Msg
+baseOrderView itemId baseOrderItem =
     let
         okonomiyaki =
             baseOrderItem.okonomiyaki
@@ -301,20 +308,20 @@ baseOrderView index baseOrderItem =
                 ]
             , button
                 [ class "btn btn-sm btn-outline btn-info"
-                , onClick (OpenEditModal index)
+                , onClick (OpenEditModal itemId)
                 ]
                 [ text "編集" ]
             , div [ class "flex items-center gap-2" ]
                 [ button
                     [ class "btn btn-sm btn-circle btn-outline"
-                    , onClick (OrderMsg (Order.DecrementOkonomiyakiQuantity index))
+                    , onClick (OrderMsg (Order.DecrementQuantity itemId))
                     ]
                     [ text "−" ]
                 , span [ class "text-xl font-bold w-8 text-center" ]
                     [ text (String.fromInt quantity) ]
                 , button
                     [ class "btn btn-sm btn-circle btn-primary"
-                    , onClick (OrderMsg (Order.IncrementOkonomiyakiQuantity index))
+                    , onClick (OrderMsg (Order.IncrementQuantity itemId))
                     ]
                     [ text "+" ]
                 ]
@@ -353,8 +360,8 @@ baseOrderView index baseOrderItem =
 
 
 
-standaloneOrderView : StandaloneOrderItem -> Html Msg
-standaloneOrderView item =
+standaloneOrderView : OrderItemId -> StandaloneOrderItem -> Html Msg
+standaloneOrderView itemId item =
     div [ class "flex items-center justify-between py-2 border-b border-base-300" ]
         [ div [ class "flex-1" ]
             [ div [ class "text-lg font-semibold" ] [ text item.menuItem.name ]
@@ -365,14 +372,14 @@ standaloneOrderView item =
         , div [ class "flex items-center gap-2" ]
             [ button
                 [ class "btn btn-sm btn-circle btn-outline"
-                , onClick (OrderMsg (Order.DecrementStandaloneQuantity item.menuItem.id))
+                , onClick (OrderMsg (Order.DecrementQuantity itemId))
                 ]
                 [ text "−" ]
             , span [ class "text-xl font-bold w-8 text-center" ]
                 [ text (String.fromInt item.quantity) ]
             , button
                 [ class "btn btn-sm btn-circle btn-primary"
-                , onClick (OrderMsg (Order.IncrementStandaloneQuantity item.menuItem.id))
+                , onClick (OrderMsg (Order.IncrementQuantity itemId))
                 ]
                 [ text "+" ]
             ]
@@ -384,12 +391,12 @@ standaloneOrderView item =
 
 editBaseModal : Model -> Html Msg
 editBaseModal model =
-    case model.editingBaseIndex of
+    case model.editingBaseId of
         Nothing ->
             text ""
 
-        Just index ->
-            case getBaseItemByIndex index model.currentOrder of
+        Just itemId ->
+            case getBaseItemById itemId model.currentOrder of
                 Nothing ->
                     text ""
 
@@ -420,7 +427,7 @@ editBaseModal model =
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "麺" ]
                                     , div [ class "grid grid-cols-2 gap-3" ]
                                         (Okonomiyaki.allNoodles
-                                            |> List.map (noodleMenuItem index okonomiyaki)
+                                            |> List.map (noodleMenuItem itemId okonomiyaki)
                                         )
                                     ]
 
@@ -429,7 +436,7 @@ editBaseModal model =
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "トッピング" ]
                                     , div [ class "grid grid-cols-2 gap-3" ]
                                         (Okonomiyaki.allToppings
-                                            |> List.map (toppingMenuItem index okonomiyaki.toppings)
+                                            |> List.map (toppingMenuItem itemId okonomiyaki.toppings)
                                         )
                                     ]
                                 ]
@@ -498,8 +505,8 @@ editBaseModal model =
                         ]
 
 
-noodleMenuItem : Int -> Okonomiyaki -> Noodle -> Html Msg
-noodleMenuItem baseIndex baseOrderItem noodle =
+noodleMenuItem : OrderItemId -> Okonomiyaki -> Noodle -> Html Msg
+noodleMenuItem itemId baseOrderItem noodle =
     let
         -- noodles リスト内の数量（選択されていなければ Nothing）
         maybeNoodleAddition =
@@ -533,7 +540,7 @@ noodleMenuItem baseIndex baseOrderItem noodle =
         , div [ class "flex items-center gap-2" ]
             [ button
                 [ class "btn btn-xs btn-circle btn-outline"
-                , onClick (OrderMsg (Order.EditOkonomiyaki baseIndex (Okonomiyaki.DecrementNoodle noodle)))
+                , onClick (OrderMsg (Order.EditOkonomiyaki itemId (Okonomiyaki.DecrementNoodle noodle)))
                 , disabled (not isSelected)
                 ]
                 [ text "−" ]
@@ -552,15 +559,15 @@ noodleMenuItem baseIndex baseOrderItem noodle =
                 ]
             , button
                 [ class "btn btn-xs btn-circle btn-primary"
-                , onClick (OrderMsg (Order.EditOkonomiyaki baseIndex (Okonomiyaki.IncrementNoodle noodle)))
+                , onClick (OrderMsg (Order.EditOkonomiyaki itemId (Okonomiyaki.IncrementNoodle noodle)))
                 ]
                 [ text "+" ]
             ]
         ]
 
 
-toppingMenuItem : Int -> List ToppingAddition -> Topping -> Html Msg
-toppingMenuItem baseIndex currentToppings item =
+toppingMenuItem : OrderItemId -> List ToppingAddition -> Topping -> Html Msg
+toppingMenuItem itemId currentToppings item =
     let
         isSelected =
             currentToppings
@@ -569,7 +576,7 @@ toppingMenuItem baseIndex currentToppings item =
     div
         [ class "flex items-center justify-between p-3 border border-base-300 rounded-lg hover:bg-base-200 cursor-pointer"
         , classList [ ( "bg-success/10 border-success", isSelected ) ]
-        , onClick (OrderMsg (Order.EditOkonomiyaki baseIndex (Okonomiyaki.ToggleTopping item)))
+        , onClick (OrderMsg (Order.EditOkonomiyaki itemId (Okonomiyaki.ToggleTopping item)))
         ]
         [ div [ class "flex-1" ]
             [ div [ class "text-base font-bold" ] [ text item.name ]

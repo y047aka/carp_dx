@@ -1,7 +1,12 @@
-module Order exposing (Order, Msg(..), OrderItemType(..), StandaloneOrderItem, BaseOrderItem, emptyOrder, calculateTotal, update)
+module Order exposing (BaseOrderItem, Msg(..), Order, OrderItem, OrderItemContent(..), OrderItemId, StandaloneOrderItem, calculateTotal, emptyOrder, update)
 
 import Menu exposing (MenuItem)
 import Okonomiyaki exposing (Okonomiyaki)
+
+
+-- 注文アイテムID（安定した一意識別子）
+type alias OrderItemId =
+    Int
 
 
 -- 独立した商品（焼き物、飲み物）
@@ -18,33 +23,41 @@ type alias BaseOrderItem =
     }
 
 
--- 注文アイテムの型（Sum Type）
-type OrderItemType
+-- 注文アイテムの内容（Sum Type）
+type OrderItemContent
     = BaseOrder BaseOrderItem
     | StandaloneOrder StandaloneOrderItem
 
 
+-- 注文アイテム（ID + 内容）
+type alias OrderItem =
+    { id : OrderItemId
+    , content : OrderItemContent
+    }
+
+
 -- 注文全体
 type alias Order =
-    { items : List OrderItemType
+    { items : List OrderItem
+    , nextId : OrderItemId
     }
 
 
 -- 空の注文
 emptyOrder : Order
 emptyOrder =
-    { items = [] }
+    { items = []
+    , nextId = 0
+    }
 
 
 -- Order に対する操作メッセージ
 type Msg
     = AddOkonomiyaki Okonomiyaki.BaseKind
     | AddStandaloneItem MenuItem
-    | IncrementOkonomiyakiQuantity Int
-    | DecrementOkonomiyakiQuantity Int
-    | EditOkonomiyaki Int Okonomiyaki.Msg
-    | IncrementStandaloneQuantity String
-    | DecrementStandaloneQuantity String
+    | IncrementQuantity OrderItemId
+    | DecrementQuantity OrderItemId
+    | EditOkonomiyaki OrderItemId Okonomiyaki.Msg
 
 
 -- Order を更新する
@@ -52,38 +65,36 @@ update : Msg -> Order -> Order
 update msg order =
     case msg of
         AddOkonomiyaki kind ->
-            { order | items = order.items ++ [ BaseOrder { okonomiyaki = Okonomiyaki.init kind, quantity = 1 } ] }
+            { order
+                | items = order.items ++ [ { id = order.nextId, content = BaseOrder { okonomiyaki = Okonomiyaki.init kind, quantity = 1 } } ]
+                , nextId = order.nextId + 1
+            }
 
         AddStandaloneItem menuItem ->
             let
-                existingIndex =
+                existingItem =
                     order.items
-                        |> List.indexedMap Tuple.pair
-                        |> List.filterMap
-                            (\( idx, item ) ->
-                                case item of
+                        |> List.filter
+                            (\item ->
+                                case item.content of
                                     StandaloneOrder standaloneItem ->
-                                        if standaloneItem.menuItem.id == menuItem.id then
-                                            Just idx
-
-                                        else
-                                            Nothing
+                                        standaloneItem.menuItem.id == menuItem.id
 
                                     _ ->
-                                        Nothing
+                                        False
                             )
                         |> List.head
             in
-            case existingIndex of
-                Just idx ->
+            case existingItem of
+                Just existing ->
                     { order
                         | items =
-                            List.indexedMap
-                                (\i item ->
-                                    if i == idx then
-                                        case item of
+                            List.map
+                                (\item ->
+                                    if item.id == existing.id then
+                                        case item.content of
                                             StandaloneOrder standaloneItem ->
-                                                StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity + 1 }
+                                                { item | content = StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity + 1 } }
 
                                             _ ->
                                                 item
@@ -95,20 +106,23 @@ update msg order =
                     }
 
                 Nothing ->
-                    { order | items = order.items ++ [ StandaloneOrder { menuItem = menuItem, quantity = 1 } ] }
+                    { order
+                        | items = order.items ++ [ { id = order.nextId, content = StandaloneOrder { menuItem = menuItem, quantity = 1 } } ]
+                        , nextId = order.nextId + 1
+                    }
 
-        IncrementOkonomiyakiQuantity index ->
+        IncrementQuantity targetId ->
             { order
                 | items =
-                    List.indexedMap
-                        (\i item ->
-                            if i == index then
-                                case item of
+                    List.map
+                        (\item ->
+                            if item.id == targetId then
+                                case item.content of
                                     BaseOrder baseOrderItem ->
-                                        BaseOrder { baseOrderItem | quantity = baseOrderItem.quantity + 1 }
+                                        { item | content = BaseOrder { baseOrderItem | quantity = baseOrderItem.quantity + 1 } }
 
-                                    _ ->
-                                        item
+                                    StandaloneOrder standaloneItem ->
+                                        { item | content = StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity + 1 } }
 
                             else
                                 item
@@ -116,13 +130,13 @@ update msg order =
                         order.items
             }
 
-        DecrementOkonomiyakiQuantity index ->
+        DecrementQuantity targetId ->
             { order
                 | items =
-                    List.indexedMap
-                        (\i item ->
-                            if i == index then
-                                case item of
+                    List.filterMap
+                        (\item ->
+                            if item.id == targetId then
+                                case item.content of
                                     BaseOrder baseOrderItem ->
                                         let
                                             newQuantity =
@@ -132,27 +146,34 @@ update msg order =
                                             Nothing
 
                                         else
-                                            Just (BaseOrder { baseOrderItem | quantity = newQuantity })
+                                            Just { item | content = BaseOrder { baseOrderItem | quantity = newQuantity } }
 
-                                    _ ->
-                                        Just item
+                                    StandaloneOrder standaloneItem ->
+                                        let
+                                            newQuantity =
+                                                standaloneItem.quantity - 1
+                                        in
+                                        if newQuantity <= 0 then
+                                            Nothing
+
+                                        else
+                                            Just { item | content = StandaloneOrder { standaloneItem | quantity = newQuantity } }
 
                             else
                                 Just item
                         )
                         order.items
-                        |> List.filterMap identity
             }
 
-        EditOkonomiyaki index okonomiyakiMsg ->
+        EditOkonomiyaki targetId okonomiyakiMsg ->
             { order
                 | items =
-                    List.indexedMap
-                        (\i item ->
-                            if i == index then
-                                case item of
+                    List.map
+                        (\item ->
+                            if item.id == targetId then
+                                case item.content of
                                     BaseOrder baseOrderItem ->
-                                        BaseOrder { baseOrderItem | okonomiyaki = Okonomiyaki.update okonomiyakiMsg baseOrderItem.okonomiyaki }
+                                        { item | content = BaseOrder { baseOrderItem | okonomiyaki = Okonomiyaki.update okonomiyakiMsg baseOrderItem.okonomiyaki } }
 
                                     _ ->
                                         item
@@ -163,53 +184,6 @@ update msg order =
                         order.items
             }
 
-        IncrementStandaloneQuantity targetId ->
-            { order
-                | items =
-                    List.map
-                        (\item ->
-                            case item of
-                                StandaloneOrder standaloneItem ->
-                                    if standaloneItem.menuItem.id == targetId then
-                                        StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity + 1 }
-
-                                    else
-                                        item
-
-                                _ ->
-                                    item
-                        )
-                        order.items
-            }
-
-        DecrementStandaloneQuantity targetId ->
-            { order
-                | items =
-                    List.map
-                        (\item ->
-                            case item of
-                                StandaloneOrder standaloneItem ->
-                                    if standaloneItem.menuItem.id == targetId then
-                                        StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity - 1 }
-
-                                    else
-                                        item
-
-                                _ ->
-                                    item
-                        )
-                        order.items
-                        |> List.filter
-                            (\item ->
-                                case item of
-                                    StandaloneOrder standaloneItem ->
-                                        standaloneItem.quantity > 0
-
-                                    _ ->
-                                        True
-                            )
-            }
-
 
 -- 注文全体の合計金額
 calculateTotal : Order -> Int
@@ -217,7 +191,7 @@ calculateTotal order =
     order.items
         |> List.map
             (\item ->
-                case item of
+                case item.content of
                     BaseOrder baseOrderItem ->
                         Okonomiyaki.calculateTotal baseOrderItem.okonomiyaki * baseOrderItem.quantity
 
