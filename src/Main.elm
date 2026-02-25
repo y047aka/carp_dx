@@ -142,12 +142,20 @@ view model =
         [ -- ヘッダー
           div [ class "navbar bg-primary text-primary-content sticky top-0 z-10" ]
             [ div [ class "flex-1" ]
-                [ h1 [ class "text-2xl font-bold px-4" ] [ text "お好み焼き会計" ]
+                [ h1 [ class "text-2xl font-bold px-4" ] [ text "carp_dx" ]
+                ]
+            , div [ class "px-2" ]
+                [ button
+                    [ class "btn btn-primary-content btn-outline btn-md rounded-xl"
+                    , onClick ShowCheckout
+                    , disabled (not (hasItems model))
+                    ]
+                    [ text "会計" ]
                 ]
             ]
 
         -- カテゴリータブ
-        , div [ class "tabs tabs-boxed bg-base-100 sticky top-16 z-10 p-2 shadow-md" ]
+        , div [ class "tabs tabs-boxed bg-base-100 sticky top-16 z-10 p-2 shadow-md flex" ]
             [ categoryTab Menu.Base model.selectedCategory
             , categoryTab Menu.Grilled model.selectedCategory
             , categoryTab Menu.Drink model.selectedCategory
@@ -155,7 +163,7 @@ view model =
 
         -- メニューグリッド
         , div [ class "p-4" ]
-            [ div [ class "grid grid-cols-2 gap-3" ]
+            [ div [ class "grid grid-cols-1 sm:grid-cols-2 gap-3" ]
                 (MenuData.allMenuItems
                     |> List.filter (\item -> item.category == model.selectedCategory)
                     |> List.map menuItemCard
@@ -184,7 +192,7 @@ view model =
 categoryTab : MenuCategory -> MenuCategory -> Html Msg
 categoryTab category selectedCategory =
     button
-        [ class "tab"
+        [ class "tab flex-1"
         , classList [ ( "tab-active", category == selectedCategory ) ]
         , onClick (SelectCategory category)
         ]
@@ -208,11 +216,11 @@ menuItemCard item =
                 "¥" ++ String.fromInt item.price
     in
     button
-        [ class "btn btn-lg h-auto min-h-20 flex-col items-start justify-center p-4 normal-case"
+        [ class "btn h-auto min-h-14 items-center justify-between p-3 normal-case w-full rounded-xl"
         , onClick (AddMenuItem item)
         ]
-        [ div [ class "text-lg font-bold w-full text-left" ] [ text item.name ]
-        , div [ class "text-xl text-primary w-full text-left" ] [ text priceText ]
+        [ div [ class "text-base font-bold text-left" ] [ text item.name ]
+        , div [ class "text-base text-primary text-right" ] [ text priceText ]
         ]
 
 
@@ -232,46 +240,32 @@ getBaseItemById targetId order =
             )
 
 
+hasItems : Model -> Bool
+hasItems model =
+    not (List.isEmpty model.currentOrder.items)
+
+
 orderSummary : Model -> Html Msg
 orderSummary model =
     let
         total =
             Order.calculateTotal model.currentOrder
-
-        hasItems =
-            not (List.isEmpty model.currentOrder.items)
     in
     div [ class "fixed bottom-0 left-0 right-0 bg-base-100 shadow-2xl border-t-4 border-primary" ]
         [ div [ class "p-4" ]
             [ -- 注文リスト
-              if hasItems then
+              if hasItems model then
                 div [ class "mb-4 max-h-48 overflow-y-auto" ]
                     (List.map orderItemView model.currentOrder.items)
 
               else
-                div [ class "text-center text-base-content/50 mb-4 py-4" ]
+                div [ class "text-center text-base-content/50 mb-4 py-2" ]
                     [ text "商品を選択してください" ]
 
             -- 合計金額
-            , div [ class "flex items-center justify-between mb-4 p-4 bg-primary/10 rounded-lg" ]
+            , div [ class "flex items-center justify-between p-4 bg-primary/10 rounded-3xl" ]
                 [ span [ class "text-2xl font-bold" ] [ text "合計" ]
                 , span [ class "text-4xl font-bold text-primary" ] [ text ("¥" ++ String.fromInt total) ]
-                ]
-
-            -- アクションボタン
-            , div [ class "grid grid-cols-2 gap-3" ]
-                [ button
-                    [ class "btn btn-outline btn-lg"
-                    , onClick ResetOrder
-                    , disabled (not hasItems)
-                    ]
-                    [ text "クリア" ]
-                , button
-                    [ class "btn btn-primary btn-lg"
-                    , onClick ShowCheckout
-                    , disabled (not hasItems)
-                    ]
-                    [ text "会計" ]
                 ]
             ]
         ]
@@ -307,7 +301,7 @@ baseOrderView itemId baseOrderItem =
                     ]
                 ]
             , button
-                [ class "btn btn-sm btn-outline btn-info"
+                [ class "btn btn-sm btn-outline btn-info rounded-xl"
                 , onClick (OpenEditModal itemId)
                 ]
                 [ text "編集" ]
@@ -483,12 +477,12 @@ editBaseModal model =
                                 , if model.isAddingNewBase then
                                     div [ class "grid grid-cols-2 gap-3" ]
                                         [ button
-                                            [ class "btn btn-outline btn-lg"
+                                            [ class "btn btn-outline btn-lg rounded-xl"
                                             , onClick CancelAddingBase
                                             ]
                                             [ text "キャンセル" ]
                                         , button
-                                            [ class "btn btn-primary btn-lg"
+                                            [ class "btn btn-primary btn-lg rounded-xl"
                                             , onClick CloseEditModal
                                             ]
                                             [ text "確定" ]
@@ -496,7 +490,7 @@ editBaseModal model =
 
                                   else
                                     button
-                                        [ class "btn btn-primary btn-block btn-lg"
+                                        [ class "btn btn-primary btn-block btn-lg rounded-xl"
                                         , onClick CloseEditModal
                                         ]
                                         [ text "完了" ]
@@ -585,7 +579,7 @@ toppingMenuItem itemId currentToppings item =
             ]
         , input
             [ type_ "checkbox"
-            , class "toggle toggle-success pointer-events-none"
+            , class "checkbox checkbox-success pointer-events-none"
             , checked isSelected
             ]
             []
@@ -600,14 +594,18 @@ checkoutModal model =
     in
     div [ class "modal modal-open" ]
         [ div [ class "modal-box max-w-md" ]
-            [ h2 [ class "font-bold text-3xl mb-6 text-center" ] [ text "お会計" ]
-            , div [ class "text-center mb-8" ]
-                [ div [ class "text-6xl font-bold text-primary mb-2" ]
-                    [ text ("¥" ++ String.fromInt total) ]
-                , div [ class "text-lg text-base-content/70" ]
-                    [ text (String.fromInt (List.length model.currentOrder.items) ++ "品目")
-                    ]
+            [ h2 [ class "font-bold text-3xl mb-4 text-center" ] [ text "お会計" ]
+
+            -- 品目内訳
+            , div [ class "mb-4 divide-y divide-base-300" ]
+                (List.map checkoutItemRow model.currentOrder.items)
+
+            -- 合計金額
+            , div [ class "flex items-center justify-between py-3 border-t-2 border-primary mb-6" ]
+                [ span [ class "text-xl font-bold" ] [ text "合計" ]
+                , span [ class "text-4xl font-bold text-primary" ] [ text ("¥" ++ String.fromInt total) ]
                 ]
+
             , div [ class "modal-action grid grid-cols-2 gap-3" ]
                 [ button [ class "btn btn-outline btn-lg", onClick CloseCheckout ]
                     [ text "戻る" ]
@@ -616,3 +614,36 @@ checkoutModal model =
                 ]
             ]
         ]
+
+
+checkoutItemRow : OrderItem -> Html Msg
+checkoutItemRow item =
+    case item.content of
+        BaseOrder baseOrderItem ->
+            let
+                okonomiyaki =
+                    baseOrderItem.okonomiyaki
+
+                quantity =
+                    baseOrderItem.quantity
+            in
+            div [ class "flex items-center justify-between py-2" ]
+                [ div [ class "flex-1" ]
+                    [ div [ class "font-semibold" ] [ text (Okonomiyaki.baseName okonomiyaki) ]
+                    , div [ class "text-sm text-base-content/60" ]
+                        [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal okonomiyaki) ++ " × " ++ String.fromInt quantity) ]
+                    ]
+                , div [ class "font-bold" ]
+                    [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal okonomiyaki * quantity)) ]
+                ]
+
+        StandaloneOrder standaloneItem ->
+            div [ class "flex items-center justify-between py-2" ]
+                [ div [ class "flex-1" ]
+                    [ div [ class "font-semibold" ] [ text standaloneItem.menuItem.name ]
+                    , div [ class "text-sm text-base-content/60" ]
+                        [ text ("¥" ++ String.fromInt standaloneItem.menuItem.price ++ " × " ++ String.fromInt standaloneItem.quantity) ]
+                    ]
+                , div [ class "font-bold" ]
+                    [ text ("¥" ++ String.fromInt (standaloneItem.menuItem.price * standaloneItem.quantity)) ]
+                ]
