@@ -144,7 +144,11 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "min-h-screen bg-base-200 pb-80" ]
+    let
+        total =
+            Order.calculateTotal model.currentOrder
+    in
+    div [ class ("min-h-screen bg-base-200 " ++ (if model.orderSummaryExpanded then "pb-80" else "pb-16")) ]
         [ -- ヘッダー
           div [ class "navbar bg-primary text-primary-content sticky top-0 z-10" ]
             [ div [ class "flex-1" ]
@@ -156,7 +160,12 @@ view model =
                     , onClick ShowCheckout
                     , disabled (not (hasItems model))
                     ]
-                    [ text "会計" ]
+                    [ if hasItems model then
+                        text ("会計  ¥" ++ String.fromInt total)
+
+                      else
+                        text "会計"
+                    ]
                 ]
             ]
 
@@ -168,13 +177,11 @@ view model =
             ]
 
         -- メニューグリッド
-        , div [ class "p-4" ]
-            [ div [ class "grid grid-cols-1 sm:grid-cols-2 gap-3" ]
-                (MenuData.allMenuItems
-                    |> List.filter (\item -> item.category == model.selectedCategory)
-                    |> List.map menuItemCard
-                )
-            ]
+        , div [ class "px-4 py-2 bg-base-100 divide-y divide-base-300" ]
+            (MenuData.allMenuItems
+                |> List.filter (\item -> item.category == model.selectedCategory)
+                |> List.map (menuItemCard model.currentOrder)
+            )
 
         -- 注文サマリー（固定ボトムシート）
         , orderSummary model
@@ -206,8 +213,28 @@ categoryTab category selectedCategory =
         ]
 
 
-menuItemCard : MenuItem -> Html Msg
-menuItemCard item =
+standaloneQuantity : Order -> MenuItem -> Int
+standaloneQuantity order menuItem =
+    order.items
+        |> List.filterMap
+            (\item ->
+                case item.content of
+                    StandaloneOrder s ->
+                        if s.menuItem.id == menuItem.id then
+                            Just s.quantity
+
+                        else
+                            Nothing
+
+                    _ ->
+                        Nothing
+            )
+        |> List.head
+        |> Maybe.withDefault 0
+
+
+menuItemCard : Order -> MenuItem -> Html Msg
+menuItemCard order item =
     let
         priceText =
             if item.category == Menu.Base then
@@ -221,13 +248,73 @@ menuItemCard item =
             else
                 "¥" ++ String.fromInt item.price
     in
-    button
-        [ class "btn h-auto min-h-14 items-center justify-between p-3 normal-case w-full rounded-xl"
-        , onClick (AddMenuItem item)
-        ]
-        [ div [ class "text-base font-bold text-left" ] [ text item.name ]
-        , div [ class "text-base text-primary text-right" ] [ text priceText ]
-        ]
+    case item.category of
+        Menu.Base ->
+            button
+                [ class "flex items-center justify-between w-full py-3 text-left hover:bg-base-200/50 active:bg-base-200"
+                , onClick (AddMenuItem item)
+                ]
+                [ div [ class "text-lg font-bold" ] [ text item.name ]
+                , div [ class "text-base text-primary" ] [ text priceText ]
+                ]
+
+        _ ->
+            let
+                qty =
+                    standaloneQuantity order item
+
+                standaloneItemId =
+                    order.items
+                        |> List.filterMap
+                            (\i ->
+                                case i.content of
+                                    StandaloneOrder s ->
+                                        if s.menuItem.id == item.id then
+                                            Just i.id
+
+                                        else
+                                            Nothing
+
+                                    _ ->
+                                        Nothing
+                            )
+                        |> List.head
+            in
+            div [ class "flex items-center justify-between py-2" ]
+                [ div []
+                    [ div
+                        [ class "text-lg font-bold"
+                        , classList [ ( "text-success", qty > 0 ) ]
+                        ]
+                        [ text item.name ]
+                    , div [ class "text-sm text-base-content/70" ] [ text priceText ]
+                    ]
+                , div [ class "flex items-center gap-2" ]
+                    [ button
+                        [ class "btn btn-xs btn-circle btn-outline"
+                        , disabled (qty == 0)
+                        , onClick
+                            (case standaloneItemId of
+                                Just id ->
+                                    OrderMsg (Order.DecrementQuantity id)
+
+                                Nothing ->
+                                    OrderMsg (Order.AddStandaloneItem item)
+                            )
+                        ]
+                        [ text "−" ]
+                    , span
+                        [ class "text-lg font-bold w-8 text-center"
+                        , classList [ ( "text-base-content/30", qty == 0 ) ]
+                        ]
+                        [ text (String.fromInt qty) ]
+                    , button
+                        [ class "btn btn-xs btn-circle btn-primary"
+                        , onClick (OrderMsg (Order.AddStandaloneItem item))
+                        ]
+                        [ text "+" ]
+                    ]
+                ]
 
 
 getBaseItemById : OrderItemId -> Order -> Maybe BaseOrderItem
@@ -253,44 +340,37 @@ hasItems model =
 
 orderSummary : Model -> Html Msg
 orderSummary model =
-    let
-        total =
-            Order.calculateTotal model.currentOrder
+    div [ class "fixed bottom-0 left-0 right-0 bg-base-100 shadow-2xl rounded-t-3xl" ]
+        [ -- ハンドル（クリックで展開/折りたたみ）
+          div
+            [ class "flex flex-col items-center pt-3 pb-2 cursor-pointer select-none"
+            , onClick ToggleOrderSummary
+            ]
+            [ div [ class "w-10 h-1.5 bg-base-300 rounded-full mb-2" ] []
+            , if model.orderSummaryExpanded then
+                span [ class "text-xs text-base-content/40 font-medium tracking-widest uppercase" ] [ text "閉じる" ]
 
-        toggleIndicator =
-            if model.orderSummaryExpanded then
-                "▼"
-
-            else
-                "▲"
-    in
-    div [ class "fixed bottom-0 left-0 right-0 bg-base-100 shadow-2xl border-t-4 border-primary" ]
-        [ div [ class "p-4" ]
-            [ -- 注文リスト（展開時のみ表示）
-              if model.orderSummaryExpanded then
-                if hasItems model then
-                    div [ class "mb-4 max-h-48 overflow-y-auto" ]
-                        (List.map orderItemView model.currentOrder.items)
-
-                else
-                    div [ class "text-center text-base-content/50 mb-4 py-2" ]
-                        [ text "商品を選択してください" ]
+              else if hasItems model then
+                span [ class "text-xs text-base-content/40 font-medium tracking-widest uppercase" ] [ text "注文を確認" ]
 
               else
                 text ""
-
-            -- 合計金額（クリックで展開/折りたたみ）
-            , div
-                [ class "flex items-center justify-between p-4 bg-primary/10 rounded-3xl cursor-pointer select-none"
-                , onClick ToggleOrderSummary
-                ]
-                [ span [ class "text-2xl font-bold" ]
-                    [ span [ class "mr-2 text-base opacity-60" ] [ text toggleIndicator ]
-                    , text "合計"
-                    ]
-                , span [ class "text-4xl font-bold text-primary" ] [ text ("¥" ++ String.fromInt total) ]
-                ]
             ]
+
+        -- 注文リスト（展開時のみ）
+        , if model.orderSummaryExpanded then
+            div [ class "px-4 pb-4 max-h-64 overflow-y-auto" ]
+                (if hasItems model then
+                    List.map orderItemView model.currentOrder.items
+
+                 else
+                    [ div [ class "text-center text-base-content/50 py-4" ]
+                        [ text "商品を選択してください" ]
+                    ]
+                )
+
+          else
+            text ""
         ]
 
 
@@ -430,7 +510,7 @@ editBaseModal model =
                                 "「" ++ Okonomiyaki.baseName okonomiyaki ++ "」を編集"
                     in
                     div [ class "modal modal-open" ]
-                        [ div [ class "modal-box max-w-2xl max-h-[90vh] flex flex-col p-0" ]
+                        [ div [ class "modal-box max-w-lg max-h-[90vh] flex flex-col p-0" ]
                             [ -- スクロール可能なコンテンツエリア
                               div [ class "flex-1 overflow-y-auto p-6" ]
                                 [ -- ヘッダー
@@ -442,7 +522,7 @@ editBaseModal model =
                                 -- 麺セクション
                                 , div [ class "mb-6" ]
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "麺" ]
-                                    , div [ class "grid grid-cols-2 gap-3" ]
+                                    , div [ class "divide-y divide-base-300" ]
                                         (Okonomiyaki.allNoodles
                                             |> List.map (noodleMenuItem itemId okonomiyaki)
                                         )
@@ -451,7 +531,7 @@ editBaseModal model =
                                 -- トッピングセクション
                                 , div [ class "mb-6" ]
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "トッピング" ]
-                                    , div [ class "grid grid-cols-2 gap-3" ]
+                                    , div [ class "divide-y divide-base-300" ]
                                         (Okonomiyaki.allToppings
                                             |> List.map (toppingMenuItem itemId okonomiyaki.toppings)
                                         )
@@ -543,8 +623,8 @@ noodleMenuItem itemId baseOrderItem noodle =
                     "¥" ++ String.fromInt (Okonomiyaki.noodleAdditionPrice { noodle = noodle, quantity = Okonomiyaki.Whole 1 })
     in
     div
-        [ class "flex items-center justify-between p-3 border border-base-300 rounded-lg"
-        , classList [ ( "bg-success/10 border-success", isSelected ) ]
+        [ class "flex items-center justify-between py-2"
+        , classList [ ( "text-success", isSelected ) ]
         ]
         [ -- 左側: 名前と価格
           div [ class "flex-1 text-left" ]
@@ -591,8 +671,8 @@ toppingMenuItem itemId currentToppings item =
                 |> List.any (\t -> t.topping.kind == item.kind)
     in
     div
-        [ class "flex items-center justify-between p-3 border border-base-300 rounded-lg hover:bg-base-200 cursor-pointer"
-        , classList [ ( "bg-success/10 border-success", isSelected ) ]
+        [ class "flex items-center justify-between py-2 cursor-pointer hover:bg-base-200/50"
+        , classList [ ( "text-success", isSelected ) ]
         , onClick (OrderMsg (Order.EditOkonomiyaki itemId (Okonomiyaki.ToggleTopping item)))
         ]
         [ div [ class "flex-1" ]
@@ -624,8 +704,8 @@ checkoutModal model =
                 (List.map checkoutItemRow model.currentOrder.items)
 
             -- 合計金額
-            , div [ class "flex items-center justify-between py-3 border-t-2 border-primary mb-6" ]
-                [ span [ class "text-xl font-bold" ] [ text "合計" ]
+            , div [ class "flex items-center justify-between p-4 bg-primary/10 rounded-3xl mb-6" ]
+                [ span [ class "text-2xl font-bold" ] [ text "合計" ]
                 , span [ class "text-4xl font-bold text-primary" ] [ text ("¥" ++ String.fromInt total) ]
                 ]
 
