@@ -1,4 +1,4 @@
-module Order exposing (Order, OrderItemType(..), StandaloneOrderItem, addBaseItem, addStandaloneItem, updateOkonomiyakiAt, calculateTotal, emptyOrder, incrementBaseQuantity, decrementBaseQuantity, incrementStandaloneQuantity, decrementStandaloneQuantity, BaseOrderItem)
+module Order exposing (Order, Msg(..), OrderItemType(..), StandaloneOrderItem, BaseOrderItem, emptyOrder, calculateTotal, update)
 
 import Menu exposing (MenuItem)
 import Okonomiyaki exposing (Okonomiyaki)
@@ -36,90 +36,76 @@ emptyOrder =
     { items = [] }
 
 
--- ヘルパー：指定インデックスのお好み焼きに変換を適用する
-updateBaseItemAt : Int -> (Okonomiyaki -> Okonomiyaki) -> Order -> Order
-updateBaseItemAt index transform order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == index then
-                        case item of
-                            BaseOrder baseOrderItem ->
-                                BaseOrder { baseOrderItem | okonomiyaki = transform baseOrderItem.okonomiyaki }
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-    }
+-- Order に対する操作メッセージ
+type Msg
+    = AddOkonomiyaki Okonomiyaki.BaseKind
+    | AddStandaloneItem MenuItem
+    | IncrementOkonomiyakiQuantity Int
+    | DecrementOkonomiyakiQuantity Int
+    | EditOkonomiyaki Int Okonomiyaki.Msg
+    | IncrementStandaloneQuantity String
+    | DecrementStandaloneQuantity String
 
 
--- ヘルパー：指定インデックスのBaseOrderItemに変換を適用し、Nothing なら削除する
-updateOrRemoveBaseOrderItemAt : Int -> (BaseOrderItem -> Maybe BaseOrderItem) -> Order -> Order
-updateOrRemoveBaseOrderItemAt index transform order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == index then
-                        case item of
-                            BaseOrder baseOrderItem ->
-                                transform baseOrderItem |> Maybe.map BaseOrder
+-- Order を更新する
+update : Msg -> Order -> Order
+update msg order =
+    case msg of
+        AddOkonomiyaki kind ->
+            { order | items = order.items ++ [ BaseOrder { okonomiyaki = Okonomiyaki.init kind, quantity = 1 } ] }
 
-                            _ ->
-                                Just item
+        AddStandaloneItem menuItem ->
+            let
+                existingIndex =
+                    order.items
+                        |> List.indexedMap Tuple.pair
+                        |> List.filterMap
+                            (\( idx, item ) ->
+                                case item of
+                                    StandaloneOrder standaloneItem ->
+                                        if standaloneItem.menuItem.id == menuItem.id then
+                                            Just idx
 
-                    else
-                        Just item
-                )
-                order.items
-                |> List.filterMap identity
-    }
+                                        else
+                                            Nothing
 
+                                    _ ->
+                                        Nothing
+                            )
+                        |> List.head
+            in
+            case existingIndex of
+                Just idx ->
+                    { order
+                        | items =
+                            List.indexedMap
+                                (\i item ->
+                                    if i == idx then
+                                        case item of
+                                            StandaloneOrder standaloneItem ->
+                                                StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity + 1 }
 
--- 新しいお好み焼きを追加
-addBaseItem : Okonomiyaki.BaseKind -> Order -> Order
-addBaseItem kind order =
-    { order | items = order.items ++ [ BaseOrder { okonomiyaki = Okonomiyaki.init kind, quantity = 1 } ] }
+                                            _ ->
+                                                item
 
+                                    else
+                                        item
+                                )
+                                order.items
+                    }
 
--- 独立商品（焼き物・飲み物）を追加または数量を増やす
-addStandaloneItem : MenuItem -> Order -> Order
-addStandaloneItem menuItem order =
-    let
-        existingIndex =
-            order.items
-                |> List.indexedMap Tuple.pair
-                |> List.filterMap
-                    (\( idx, item ) ->
-                        case item of
-                            StandaloneOrder standaloneItem ->
-                                if standaloneItem.menuItem.id == menuItem.id then
-                                    Just idx
+                Nothing ->
+                    { order | items = order.items ++ [ StandaloneOrder { menuItem = menuItem, quantity = 1 } ] }
 
-                                else
-                                    Nothing
-
-                            _ ->
-                                Nothing
-                    )
-                |> List.head
-    in
-    case existingIndex of
-        Just idx ->
-            -- 既存の商品があれば数量+1
+        IncrementOkonomiyakiQuantity index ->
             { order
                 | items =
                     List.indexedMap
                         (\i item ->
-                            if i == idx then
+                            if i == index then
                                 case item of
-                                    StandaloneOrder standaloneItem ->
-                                        StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity + 1 }
+                                    BaseOrder baseOrderItem ->
+                                        BaseOrder { baseOrderItem | quantity = baseOrderItem.quantity + 1 }
 
                                     _ ->
                                         item
@@ -130,110 +116,99 @@ addStandaloneItem menuItem order =
                         order.items
             }
 
-        Nothing ->
-            -- 新しい商品を追加
+        DecrementOkonomiyakiQuantity index ->
             { order
-                | items = order.items ++ [ StandaloneOrder { menuItem = menuItem, quantity = 1 } ]
+                | items =
+                    List.indexedMap
+                        (\i item ->
+                            if i == index then
+                                case item of
+                                    BaseOrder baseOrderItem ->
+                                        let
+                                            newQuantity =
+                                                baseOrderItem.quantity - 1
+                                        in
+                                        if newQuantity <= 0 then
+                                            Nothing
+
+                                        else
+                                            Just (BaseOrder { baseOrderItem | quantity = newQuantity })
+
+                                    _ ->
+                                        Just item
+
+                            else
+                                Just item
+                        )
+                        order.items
+                        |> List.filterMap identity
             }
 
+        EditOkonomiyaki index okonomiyakiMsg ->
+            { order
+                | items =
+                    List.indexedMap
+                        (\i item ->
+                            if i == index then
+                                case item of
+                                    BaseOrder baseOrderItem ->
+                                        BaseOrder { baseOrderItem | okonomiyaki = Okonomiyaki.update okonomiyakiMsg baseOrderItem.okonomiyaki }
 
--- Okonomiyaki.Msg を指定インデックスのお好み焼きに適用する
-updateOkonomiyakiAt : Int -> Okonomiyaki.Msg -> Order -> Order
-updateOkonomiyakiAt index msg order =
-    updateBaseItemAt index (Okonomiyaki.update msg) order
-
-
--- お好み焼きの数量を増やす
-incrementBaseQuantity : Int -> Order -> Order
-incrementBaseQuantity index order =
-    { order
-        | items =
-            List.indexedMap
-                (\i item ->
-                    if i == index then
-                        case item of
-                            BaseOrder baseOrderItem ->
-                                BaseOrder { baseOrderItem | quantity = baseOrderItem.quantity + 1 }
-
-                            _ ->
-                                item
-
-                    else
-                        item
-                )
-                order.items
-    }
-
-
--- お好み焼きの数量を減らす（0になったら削除）
-decrementBaseQuantity : Int -> Order -> Order
-decrementBaseQuantity index order =
-    updateOrRemoveBaseOrderItemAt index
-        (\baseOrderItem ->
-            let
-                newQuantity =
-                    baseOrderItem.quantity - 1
-            in
-            if newQuantity <= 0 then
-                Nothing
-
-            else
-                Just { baseOrderItem | quantity = newQuantity }
-        )
-        order
-
-
--- 独立商品の数量を増やす
-incrementStandaloneQuantity : String -> Order -> Order
-incrementStandaloneQuantity targetId order =
-    { order
-        | items =
-            List.map
-                (\item ->
-                    case item of
-                        StandaloneOrder standaloneItem ->
-                            if standaloneItem.menuItem.id == targetId then
-                                StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity + 1 }
+                                    _ ->
+                                        item
 
                             else
                                 item
+                        )
+                        order.items
+            }
 
-                        _ ->
-                            item
-                )
-                order.items
-    }
+        IncrementStandaloneQuantity targetId ->
+            { order
+                | items =
+                    List.map
+                        (\item ->
+                            case item of
+                                StandaloneOrder standaloneItem ->
+                                    if standaloneItem.menuItem.id == targetId then
+                                        StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity + 1 }
 
+                                    else
+                                        item
 
--- 独立商品の数量を減らす（0になったら削除）
-decrementStandaloneQuantity : String -> Order -> Order
-decrementStandaloneQuantity targetId order =
-    { order
-        | items =
-            List.map
-                (\item ->
-                    case item of
-                        StandaloneOrder standaloneItem ->
-                            if standaloneItem.menuItem.id == targetId then
-                                StandaloneOrder { standaloneItem | quantity = max 0 (standaloneItem.quantity - 1) }
+                                _ ->
+                                    item
+                        )
+                        order.items
+            }
 
-                            else
-                                item
+        DecrementStandaloneQuantity targetId ->
+            { order
+                | items =
+                    List.map
+                        (\item ->
+                            case item of
+                                StandaloneOrder standaloneItem ->
+                                    if standaloneItem.menuItem.id == targetId then
+                                        StandaloneOrder { standaloneItem | quantity = standaloneItem.quantity - 1 }
 
-                        _ ->
-                            item
-                )
-                order.items
-                |> List.filter
-                    (\item ->
-                        case item of
-                            StandaloneOrder standaloneItem ->
-                                standaloneItem.quantity > 0
+                                    else
+                                        item
 
-                            _ ->
-                                True
-                    )
-    }
+                                _ ->
+                                    item
+                        )
+                        order.items
+                        |> List.filter
+                            (\item ->
+                                case item of
+                                    StandaloneOrder standaloneItem ->
+                                        standaloneItem.quantity > 0
+
+                                    _ ->
+                                        True
+                            )
+            }
 
 
 -- 注文全体の合計金額

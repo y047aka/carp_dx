@@ -42,11 +42,7 @@ type Msg
     = SelectCategory MenuCategory
     | AddMenuItem MenuItem
     | CancelAddingBase
-    | IncrementBaseQuantity Int
-    | DecrementBaseQuantity Int
-    | EditOkonomiyaki Int Okonomiyaki.Msg
-    | IncrementStandaloneQuantity String
-    | DecrementStandaloneQuantity String
+    | OrderMsg Order.Msg
     | ShowCheckout
     | CloseCheckout
     | ResetOrder
@@ -67,7 +63,7 @@ update msg model =
                         Just kind ->
                             let
                                 newOrder =
-                                    Order.addBaseItem kind model.currentOrder
+                                    Order.update (Order.AddOkonomiyaki kind) model.currentOrder
 
                                 lastIndex =
                                     List.length newOrder.items - 1
@@ -85,10 +81,10 @@ update msg model =
                     model
 
                 Menu.Grilled ->
-                    { model | currentOrder = Order.addStandaloneItem menuItem model.currentOrder }
+                    { model | currentOrder = Order.update (Order.AddStandaloneItem menuItem) model.currentOrder }
 
                 Menu.Drink ->
-                    { model | currentOrder = Order.addStandaloneItem menuItem model.currentOrder }
+                    { model | currentOrder = Order.update (Order.AddStandaloneItem menuItem) model.currentOrder }
 
         CancelAddingBase ->
             let
@@ -104,20 +100,8 @@ update msg model =
                 , isAddingNewBase = False
             }
 
-        IncrementBaseQuantity index ->
-            { model | currentOrder = Order.incrementBaseQuantity index model.currentOrder }
-
-        DecrementBaseQuantity index ->
-            { model | currentOrder = Order.decrementBaseQuantity index model.currentOrder }
-
-        EditOkonomiyaki index okonomiyakiMsg ->
-            { model | currentOrder = Order.updateOkonomiyakiAt index okonomiyakiMsg model.currentOrder }
-
-        IncrementStandaloneQuantity itemId ->
-            { model | currentOrder = Order.incrementStandaloneQuantity itemId model.currentOrder }
-
-        DecrementStandaloneQuantity itemId ->
-            { model | currentOrder = Order.decrementStandaloneQuantity itemId model.currentOrder }
+        OrderMsg orderMsg ->
+            { model | currentOrder = Order.update orderMsg model.currentOrder }
 
         ShowCheckout ->
             { model | showCheckoutModal = True }
@@ -323,14 +307,14 @@ baseOrderView index baseOrderItem =
             , div [ class "flex items-center gap-2" ]
                 [ button
                     [ class "btn btn-sm btn-circle btn-outline"
-                    , onClick (DecrementBaseQuantity index)
+                    , onClick (OrderMsg (Order.DecrementOkonomiyakiQuantity index))
                     ]
                     [ text "−" ]
                 , span [ class "text-xl font-bold w-8 text-center" ]
                     [ text (String.fromInt quantity) ]
                 , button
                     [ class "btn btn-sm btn-circle btn-primary"
-                    , onClick (IncrementBaseQuantity index)
+                    , onClick (OrderMsg (Order.IncrementOkonomiyakiQuantity index))
                     ]
                     [ text "+" ]
                 ]
@@ -381,14 +365,14 @@ standaloneOrderView item =
         , div [ class "flex items-center gap-2" ]
             [ button
                 [ class "btn btn-sm btn-circle btn-outline"
-                , onClick (DecrementStandaloneQuantity item.menuItem.id)
+                , onClick (OrderMsg (Order.DecrementStandaloneQuantity item.menuItem.id))
                 ]
                 [ text "−" ]
             , span [ class "text-xl font-bold w-8 text-center" ]
                 [ text (String.fromInt item.quantity) ]
             , button
                 [ class "btn btn-sm btn-circle btn-primary"
-                , onClick (IncrementStandaloneQuantity item.menuItem.id)
+                , onClick (OrderMsg (Order.IncrementStandaloneQuantity item.menuItem.id))
                 ]
                 [ text "+" ]
             ]
@@ -549,7 +533,7 @@ noodleMenuItem baseIndex baseOrderItem noodle =
         , div [ class "flex items-center gap-2" ]
             [ button
                 [ class "btn btn-xs btn-circle btn-outline"
-                , onClick (EditOkonomiyaki baseIndex (Okonomiyaki.DecrementNoodle noodle))
+                , onClick (OrderMsg (Order.EditOkonomiyaki baseIndex (Okonomiyaki.DecrementNoodle noodle)))
                 , disabled (not isSelected)
                 ]
                 [ text "−" ]
@@ -568,7 +552,7 @@ noodleMenuItem baseIndex baseOrderItem noodle =
                 ]
             , button
                 [ class "btn btn-xs btn-circle btn-primary"
-                , onClick (EditOkonomiyaki baseIndex (Okonomiyaki.IncrementNoodle noodle))
+                , onClick (OrderMsg (Order.EditOkonomiyaki baseIndex (Okonomiyaki.IncrementNoodle noodle)))
                 ]
                 [ text "+" ]
             ]
@@ -585,7 +569,7 @@ toppingMenuItem baseIndex currentToppings item =
     div
         [ class "flex items-center justify-between p-3 border border-base-300 rounded-lg hover:bg-base-200 cursor-pointer"
         , classList [ ( "bg-success/10 border-success", isSelected ) ]
-        , onClick (EditOkonomiyaki baseIndex (Okonomiyaki.ToggleTopping item))
+        , onClick (OrderMsg (Order.EditOkonomiyaki baseIndex (Okonomiyaki.ToggleTopping item)))
         ]
         [ div [ class "flex-1" ]
             [ div [ class "text-base font-bold" ] [ text item.name ]
