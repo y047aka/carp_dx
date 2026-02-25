@@ -159,6 +159,7 @@ type alias NoodleAddition =
 type alias Okonomiyaki =
     { noodles : List NoodleAddition
     , toppings : List ToppingAddition
+    , selectedBase : BaseKind
     }
 
 
@@ -384,7 +385,7 @@ decrementNoodleQuantity q =
 
 ベース決定ルール（優先順位順）:
 
-  1. イカとエビが両方 toppings にあれば → ZenbuIri
+  1. メニューで全部入りを選択済み かつ イカとエビが両方 toppings にあれば → ZenbuIri
   2. そばが noodles にあれば → Soba
   3. うどんが noodles にあれば → Udon
   4. いずれでもなければ → Yasai
@@ -402,7 +403,7 @@ baseKind okonomiyaki =
         hasNoodleKind noodleKind =
             List.any (\n -> n.noodle.kind == noodleKind) okonomiyaki.noodles
     in
-    if hasSquid && hasShrimp then
+    if okonomiyaki.selectedBase == ZenbuIri && hasSquid && hasShrimp then
         ZenbuIri
 
     else if hasNoodleKind NoodleKindSoba then
@@ -459,6 +460,7 @@ init kind =
     in
     { noodles = preset.defaultNoodles
     , toppings = preset.defaultToppings
+    , selectedBase = kind
     }
 
 
