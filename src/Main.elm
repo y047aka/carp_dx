@@ -25,6 +25,7 @@ type alias Model =
     , showCheckoutModal : Bool
     , editingBaseId : Maybe OrderItemId
     , isAddingNewBase : Bool
+    , orderSummaryExpanded : Bool
     }
 
 
@@ -35,6 +36,7 @@ init =
     , showCheckoutModal = False
     , editingBaseId = Nothing
     , isAddingNewBase = False
+    , orderSummaryExpanded = False
     }
 
 
@@ -48,6 +50,7 @@ type Msg
     | ResetOrder
     | OpenEditModal OrderItemId
     | CloseEditModal
+    | ToggleOrderSummary
 
 
 update : Msg -> Model -> Model
@@ -134,6 +137,9 @@ update msg model =
                 | editingBaseId = Nothing
                 , isAddingNewBase = False
             }
+
+        ToggleOrderSummary ->
+            { model | orderSummaryExpanded = not model.orderSummaryExpanded }
 
 
 view : Model -> Html Msg
@@ -250,21 +256,38 @@ orderSummary model =
     let
         total =
             Order.calculateTotal model.currentOrder
+
+        toggleIndicator =
+            if model.orderSummaryExpanded then
+                "▼"
+
+            else
+                "▲"
     in
     div [ class "fixed bottom-0 left-0 right-0 bg-base-100 shadow-2xl border-t-4 border-primary" ]
         [ div [ class "p-4" ]
-            [ -- 注文リスト
-              if hasItems model then
-                div [ class "mb-4 max-h-48 overflow-y-auto" ]
-                    (List.map orderItemView model.currentOrder.items)
+            [ -- 注文リスト（展開時のみ表示）
+              if model.orderSummaryExpanded then
+                if hasItems model then
+                    div [ class "mb-4 max-h-48 overflow-y-auto" ]
+                        (List.map orderItemView model.currentOrder.items)
+
+                else
+                    div [ class "text-center text-base-content/50 mb-4 py-2" ]
+                        [ text "商品を選択してください" ]
 
               else
-                div [ class "text-center text-base-content/50 mb-4 py-2" ]
-                    [ text "商品を選択してください" ]
+                text ""
 
-            -- 合計金額
-            , div [ class "flex items-center justify-between p-4 bg-primary/10 rounded-3xl" ]
-                [ span [ class "text-2xl font-bold" ] [ text "合計" ]
+            -- 合計金額（クリックで展開/折りたたみ）
+            , div
+                [ class "flex items-center justify-between p-4 bg-primary/10 rounded-3xl cursor-pointer select-none"
+                , onClick ToggleOrderSummary
+                ]
+                [ span [ class "text-2xl font-bold" ]
+                    [ span [ class "mr-2 text-base opacity-60" ] [ text toggleIndicator ]
+                    , text "合計"
+                    ]
                 , span [ class "text-4xl font-bold text-primary" ] [ text ("¥" ++ String.fromInt total) ]
                 ]
             ]
