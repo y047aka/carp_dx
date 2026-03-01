@@ -8,47 +8,46 @@ import Test exposing (..)
 suite : Test
 suite =
     describe "Okonomiyaki"
-        [ describe "noodleQuantityDisplay"
-            [ test "HalfBall → \"0.5\"" <|
-                \_ -> Okonomiyaki.noodleQuantityDisplay Okonomiyaki.HalfBall |> Expect.equal "0.5"
-            , test "Whole 1 → \"1\"" <|
-                \_ -> Okonomiyaki.noodleQuantityDisplay (Okonomiyaki.Whole 1) |> Expect.equal "1"
-            , test "WholeAndHalf 1 → \"1.5\"" <|
-                \_ -> Okonomiyaki.noodleQuantityDisplay (Okonomiyaki.WholeAndHalf 1) |> Expect.equal "1.5"
-            , test "Whole 2 → \"2\"" <|
-                \_ -> Okonomiyaki.noodleQuantityDisplay (Okonomiyaki.Whole 2) |> Expect.equal "2"
+        [ describe "noodleSelectionDisplay"
+            [ test "WithoutNoodle → \"0\"" <|
+                \_ -> Okonomiyaki.noodleSelectionDisplay Okonomiyaki.WithoutNoodle |> Expect.equal "0"
+            , test "WithSoba HalfBall → \"0.5\"" <|
+                \_ -> Okonomiyaki.noodleSelectionDisplay (Okonomiyaki.WithSoba Okonomiyaki.HalfBall) |> Expect.equal "0.5"
+            , test "WithSoba (Whole 1) → \"1\"" <|
+                \_ -> Okonomiyaki.noodleSelectionDisplay (Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)) |> Expect.equal "1"
+            , test "WithUdon (WholeAndHalf 1) → \"1.5\"" <|
+                \_ -> Okonomiyaki.noodleSelectionDisplay (Okonomiyaki.WithUdon (Okonomiyaki.WholeAndHalf 1)) |> Expect.equal "1.5"
+            , test "WithChampon 2 → \"2\"" <|
+                \_ -> Okonomiyaki.noodleSelectionDisplay (Okonomiyaki.WithChampon 2) |> Expect.equal "2"
             ]
         , describe "init"
-            [ describe "baseYasaiBase（込み麺なし）"
-                [ test "noodles が空で生成される" <|
+            [ describe "Yasai（込み麺なし）"
+                [ test "noodleSelection が WithoutNoodle で生成される" <|
                     \_ ->
-                        Okonomiyaki.init Okonomiyaki.Yasai
-                            |> .noodles
-                            |> Expect.equal []
+                        Okonomiyaki.init Okonomiyaki.YasaiIri
+                            |> .noodleSelection
+                            |> Expect.equal Okonomiyaki.WithoutNoodle
                 ]
-            , describe "baseSobaBase（込み麺: そば）"
-                [ test "noodles に noodleSoba が1玉（Whole 1）でセットされる" <|
+            , describe "Soba（込み麺: そば）"
+                [ test "noodleSelection が WithSoba (Whole 1) でセットされる" <|
                     \_ ->
-                        Okonomiyaki.init Okonomiyaki.Soba
-                            |> .noodles
-                            |> List.map (\n -> ( n.noodle.kind, n.quantity ))
-                            |> Expect.equal [ ( Okonomiyaki.NoodleKindSoba, Okonomiyaki.Whole 1 ) ]
+                        Okonomiyaki.init Okonomiyaki.SobaIri
+                            |> .noodleSelection
+                            |> Expect.equal (Okonomiyaki.WithSoba (Okonomiyaki.Whole 1))
                 ]
-            , describe "baseUdonBase（込み麺: うどん）"
-                [ test "noodles に noodleUdon が1玉（Whole 1）でセットされる" <|
+            , describe "Udon（込み麺: うどん）"
+                [ test "noodleSelection が WithUdon (Whole 1) でセットされる" <|
                     \_ ->
-                        Okonomiyaki.init Okonomiyaki.Udon
-                            |> .noodles
-                            |> List.map (\n -> ( n.noodle.kind, n.quantity ))
-                            |> Expect.equal [ ( Okonomiyaki.NoodleKindUdon, Okonomiyaki.Whole 1 ) ]
+                        Okonomiyaki.init Okonomiyaki.UdonIri
+                            |> .noodleSelection
+                            |> Expect.equal (Okonomiyaki.WithUdon (Okonomiyaki.Whole 1))
                 ]
-            , describe "baseZenbuIriBase（込み麺なし、初期トッピング: イカ・エビ）"
-                [ test "noodles にそば1玉（Whole 1）がデフォルトでセットされる" <|
+            , describe "ZenbuIri（初期: そば1玉 + イカ・エビ）"
+                [ test "noodleSelection が WithSoba (Whole 1) でセットされる" <|
                     \_ ->
                         Okonomiyaki.init Okonomiyaki.ZenbuIri
-                            |> .noodles
-                            |> List.map (\n -> ( n.noodle.kind, n.quantity ))
-                            |> Expect.equal [ ( Okonomiyaki.NoodleKindSoba, Okonomiyaki.Whole 1 ) ]
+                            |> .noodleSelection
+                            |> Expect.equal (Okonomiyaki.WithSoba (Okonomiyaki.Whole 1))
                 , test "toppings にイカとエビが各1個でセットされる" <|
                     \_ ->
                         Okonomiyaki.init Okonomiyaki.ZenbuIri
@@ -59,7 +58,7 @@ suite =
             , describe "共通の初期値"
                 [ test "toppings は空で初期化される（込みトッピングなしのベース）" <|
                     \_ ->
-                        Okonomiyaki.init Okonomiyaki.Yasai
+                        Okonomiyaki.init Okonomiyaki.YasaiIri
                             |> .toppings
                             |> Expect.equal []
                 ]
@@ -68,52 +67,49 @@ suite =
             [ describe "麺の状態に応じたベース決定"
                 [ test "そばがあれば Soba になる" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings = []
-                        , selectedBase = Okonomiyaki.Yasai
+                        , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Soba
+                            |> Expect.equal Okonomiyaki.SobaIri
                 , test "うどんがあれば Udon になる" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithUdon (Okonomiyaki.Whole 1)
                         , toppings = []
-                        , selectedBase = Okonomiyaki.Yasai
+                        , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Udon
+                            |> Expect.equal Okonomiyaki.UdonIri
                 , test "麺がなければ Yasai になる" <|
                     \_ ->
-                        { noodles = []
+                        { noodleSelection = Okonomiyaki.WithoutNoodle
                         , toppings = []
-                        , selectedBase = Okonomiyaki.Yasai
+                        , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Yasai
-                , test "そばが残っていれば Soba になる" <|
+                            |> Expect.equal Okonomiyaki.YasaiIri
+                , test "そば0.5玉でも Soba になる" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.HalfBall } ]
+                        { noodleSelection = Okonomiyaki.WithSoba Okonomiyaki.HalfBall
                         , toppings = []
-                        , selectedBase = Okonomiyaki.Yasai
+                        , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Soba
-                , test "そばとうどんが両方あればそば優先で Soba になる" <|
+                            |> Expect.equal Okonomiyaki.SobaIri
+                , test "ちゃんぽんは Soba になる（そば優先）" <|
                     \_ ->
-                        { noodles =
-                            [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 }
-                            , { noodle = Okonomiyaki.noodleUdon, quantity = Okonomiyaki.Whole 1 }
-                            ]
+                        { noodleSelection = Okonomiyaki.WithChampon 1
                         , toppings = []
-                        , selectedBase = Okonomiyaki.Yasai
+                        , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Soba
+                            |> Expect.equal Okonomiyaki.SobaIri
                 ]
             , describe "全部入り（ZenbuIri）の判定：selectedBase == ZenbuIri かつ イカ+エビ"
                 [ test "selectedBase=ZenbuIri + イカ + エビ（そば有り）→ ZenbuIri" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings =
                             [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
                             , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
@@ -124,7 +120,7 @@ suite =
                             |> Expect.equal Okonomiyaki.ZenbuIri
                 , test "selectedBase=ZenbuIri + イカ + エビ（うどん有り）→ ZenbuIri" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithUdon (Okonomiyaki.Whole 1)
                         , toppings =
                             [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
                             , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
@@ -135,7 +131,7 @@ suite =
                             |> Expect.equal Okonomiyaki.ZenbuIri
                 , test "selectedBase=ZenbuIri + イカ + エビ（麺なし）→ ZenbuIri" <|
                     \_ ->
-                        { noodles = []
+                        { noodleSelection = Okonomiyaki.WithoutNoodle
                         , toppings =
                             [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
                             , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
@@ -146,144 +142,161 @@ suite =
                             |> Expect.equal Okonomiyaki.ZenbuIri
                 , test "selectedBase が ZenbuIri でなければイカ+エビがあっても ZenbuIri にならない（Soba）" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings =
                             [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
                             , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
-                        , selectedBase = Okonomiyaki.Soba
+                        , selectedBase = Okonomiyaki.SobaIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Soba
+                            |> Expect.equal Okonomiyaki.SobaIri
                 , test "selectedBase が ZenbuIri でなければイカ+エビがあっても ZenbuIri にならない（Yasai）" <|
                     \_ ->
-                        { noodles = []
+                        { noodleSelection = Okonomiyaki.WithoutNoodle
                         , toppings =
                             [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
                             , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
-                        , selectedBase = Okonomiyaki.Yasai
+                        , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Yasai
+                            |> Expect.equal Okonomiyaki.YasaiIri
                 ]
             , describe "全部入り条件が崩れると麺に応じたベースに戻る"
                 [ test "selectedBase=ZenbuIri でもエビのみ（そば残り）→ Soba" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings = [ { topping = Okonomiyaki.toppingShrimp, quantity = 1 } ]
                         , selectedBase = Okonomiyaki.ZenbuIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Soba
+                            |> Expect.equal Okonomiyaki.SobaIri
                 , test "selectedBase=ZenbuIri でもイカのみ（うどん残り）→ Udon" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithUdon (Okonomiyaki.Whole 1)
                         , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
                         , selectedBase = Okonomiyaki.ZenbuIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Udon
+                            |> Expect.equal Okonomiyaki.UdonIri
                 , test "selectedBase=ZenbuIri でもイカのみ（麺なし）→ Yasai" <|
                     \_ ->
-                        { noodles = []
+                        { noodleSelection = Okonomiyaki.WithoutNoodle
                         , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
                         , selectedBase = Okonomiyaki.ZenbuIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Yasai
+                            |> Expect.equal Okonomiyaki.YasaiIri
                 , test "selectedBase=ZenbuIri でもトッピングを全て外す（そば残り）→ Soba" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings = []
                         , selectedBase = Okonomiyaki.ZenbuIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Soba
+                            |> Expect.equal Okonomiyaki.SobaIri
                 , test "selectedBase=ZenbuIri でもトッピングを全て外す（麺なし）→ Yasai" <|
                     \_ ->
-                        { noodles = []
+                        { noodleSelection = Okonomiyaki.WithoutNoodle
                         , toppings = []
                         , selectedBase = Okonomiyaki.ZenbuIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Yasai
+                            |> Expect.equal Okonomiyaki.YasaiIri
                 ]
             , describe "イカのみ・エビのみでは ZenbuIri にならない"
                 [ test "Soba + イカのみ → Soba" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings = [ { topping = Okonomiyaki.toppingSquid, quantity = 1 } ]
-                        , selectedBase = Okonomiyaki.Yasai
+                        , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Soba
+                            |> Expect.equal Okonomiyaki.SobaIri
                 , test "Soba + エビのみ → Soba" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings = [ { topping = Okonomiyaki.toppingShrimp, quantity = 1 } ]
-                        , selectedBase = Okonomiyaki.Yasai
+                        , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.baseKind
-                            |> Expect.equal Okonomiyaki.Soba
+                            |> Expect.equal Okonomiyaki.SobaIri
                 ]
             ]
         , describe "calculateTotal"
             [ describe "麺なし"
                 [ test "麺なし = 900円" <|
                     \_ ->
-                        { noodles = [], toppings = [], selectedBase = Okonomiyaki.Yasai }
+                        { noodleSelection = Okonomiyaki.WithoutNoodle, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 900
                 ]
             , describe "麺あり: 900 + 入場料(100) + 半玉単価(100)×半玉数"
                 [ test "そば0.5玉（HalfBall）: 900 + (100 + 100×1) = 1100円" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.HalfBall } ], toppings = [], selectedBase = Okonomiyaki.Yasai }
+                        { noodleSelection = Okonomiyaki.WithSoba Okonomiyaki.HalfBall, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1100
                 , test "そば1玉（Whole 1）: 900 + (100 + 100×2) = 1200円" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 } ], toppings = [], selectedBase = Okonomiyaki.Yasai }
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1), toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1200
                 , test "そば1.5玉（WholeAndHalf 1）: 900 + (100 + 100×3) = 1300円" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.WholeAndHalf 1 } ], toppings = [], selectedBase = Okonomiyaki.Yasai }
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.WholeAndHalf 1), toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1300
                 , test "そば2玉（Whole 2）: 900 + (100 + 100×4) = 1400円" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 2 } ], toppings = [], selectedBase = Okonomiyaki.Yasai }
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 2), toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1400
+                ]
+            , describe "ちゃんぽん: 900 + 入場料(100) + 半玉単価(100)×(2n)"
+                [ test "ちゃんぽん1玉: 900 + (100 + 100×2) = 1200円" <|
+                    \_ ->
+                        { noodleSelection = Okonomiyaki.WithChampon 1, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                            |> Okonomiyaki.calculateTotal
+                            |> Expect.equal 1200
+                , test "ちゃんぽん2玉: 900 + (100 + 100×4) = 1400円" <|
+                    \_ ->
+                        { noodleSelection = Okonomiyaki.WithChampon 2, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                            |> Okonomiyaki.calculateTotal
+                            |> Expect.equal 1400
+                , test "ちゃんぽん3玉: 900 + (100 + 100×6) = 1600円" <|
+                    \_ ->
+                        { noodleSelection = Okonomiyaki.WithChampon 3, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                            |> Okonomiyaki.calculateTotal
+                            |> Expect.equal 1600
                 ]
             , describe "トッピングあり"
                 [ test "イカ天×1: 900 + 200 = 1100円" <|
                     \_ ->
-                        { noodles = [], toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 } ], selectedBase = Okonomiyaki.Yasai }
+                        { noodleSelection = Okonomiyaki.WithoutNoodle, toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 } ], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1100
                 , test "イカ天×1 + ねぎかけ×2: 900 + 200 + (250×2) = 1600円" <|
                     \_ ->
-                        { noodles = [], toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 }, { topping = Okonomiyaki.toppingNegi, quantity = 2 } ], selectedBase = Okonomiyaki.Yasai }
+                        { noodleSelection = Okonomiyaki.WithoutNoodle, toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 }, { topping = Okonomiyaki.toppingNegi, quantity = 2 } ], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1600
                 ]
             , describe "麺 + トッピングの組み合わせ"
                 [ test "そば0.5玉 + イカ天 + ねぎかけ: 900 + (100+100) + 200 + 250 = 1550円" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.HalfBall } ]
+                        { noodleSelection = Okonomiyaki.WithSoba Okonomiyaki.HalfBall
                         , toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 }, { topping = Okonomiyaki.toppingNegi, quantity = 1 } ]
-                        , selectedBase = Okonomiyaki.Yasai
+                        , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1550
                 , test "そば0.5玉 + イカ天×2: 900 + (100+100) + 200×2 = 1500円" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.HalfBall } ]
+                        { noodleSelection = Okonomiyaki.WithSoba Okonomiyaki.HalfBall
                         , toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 2 } ]
-                        , selectedBase = Okonomiyaki.Yasai
+                        , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 1500
@@ -291,7 +304,7 @@ suite =
             , describe "全部入り（ZenbuIri）の価格計算"
                 [ test "イカ + エビ（麺なし）= 1400円" <|
                     \_ ->
-                        { noodles = []
+                        { noodleSelection = Okonomiyaki.WithoutNoodle
                         , toppings =
                             [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
                             , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
@@ -302,7 +315,7 @@ suite =
                             |> Expect.equal 1400
                 , test "そば1玉 + イカ + エビ = 1700円" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings =
                             [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
                             , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
@@ -313,7 +326,7 @@ suite =
                             |> Expect.equal 1700
                 , test "うどん1玉 + イカ + エビ = 1700円" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleUdon, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithUdon (Okonomiyaki.Whole 1)
                         , toppings =
                             [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
                             , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
@@ -324,7 +337,7 @@ suite =
                             |> Expect.equal 1700
                 , test "そば0.5玉 + イカ + エビ = 1600円" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.HalfBall } ]
+                        { noodleSelection = Okonomiyaki.WithSoba Okonomiyaki.HalfBall
                         , toppings =
                             [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
                             , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
@@ -335,60 +348,164 @@ suite =
                             |> Expect.equal 1600
                 , test "selectedBase が ZenbuIri でなければイカ+エビがあっても割引なし（そば1玉+イカ+エビ = 2000円）" <|
                     \_ ->
-                        { noodles = [ { noodle = Okonomiyaki.noodleSoba, quantity = Okonomiyaki.Whole 1 } ]
+                        { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings =
                             [ { topping = Okonomiyaki.toppingSquid, quantity = 1 }
                             , { topping = Okonomiyaki.toppingShrimp, quantity = 1 }
                             ]
-                        , selectedBase = Okonomiyaki.Soba
+                        , selectedBase = Okonomiyaki.SobaIri
                         }
                             |> Okonomiyaki.calculateTotal
                             |> Expect.equal 2000
                 ]
             ]
-        , describe "IncrementNoodle"
-            [ test "新規麺は1玉（Whole 1）で追加される" <|
+        , describe "SelectNoodleKind（数量維持）"
+            [ test "WithoutNoodle → ChooseSoba: デフォルト Whole 1" <|
                 \_ ->
-                    Okonomiyaki.init Okonomiyaki.Yasai
-                        |> Okonomiyaki.update (Okonomiyaki.IncrementNoodle Okonomiyaki.noodleSoba)
-                        |> .noodles
-                        |> List.map (\n -> ( n.noodle.kind, n.quantity ))
-                        |> Expect.equal [ ( Okonomiyaki.NoodleKindSoba, Okonomiyaki.Whole 1 ) ]
-            , test "既存麺は半玉増える（Whole 1 → WholeAndHalf 1）" <|
+                    Okonomiyaki.init Okonomiyaki.YasaiIri
+                        |> Okonomiyaki.update (Okonomiyaki.SelectNoodleKind Okonomiyaki.Soba)
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithSoba (Okonomiyaki.Whole 1))
+            , test "WithSoba (Whole 1) → ChooseChampon: 半玉2 → ちゃんぽん1玉" <|
                 \_ ->
-                    Okonomiyaki.init Okonomiyaki.Soba
-                        |> Okonomiyaki.update (Okonomiyaki.IncrementNoodle Okonomiyaki.noodleSoba)
-                        |> .noodles
-                        |> List.map (\n -> ( n.noodle.kind, n.quantity ))
-                        |> Expect.equal [ ( Okonomiyaki.NoodleKindSoba, Okonomiyaki.WholeAndHalf 1 ) ]
+                    Okonomiyaki.init Okonomiyaki.SobaIri
+                        |> Okonomiyaki.update (Okonomiyaki.SelectNoodleKind Okonomiyaki.Champon)
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithChampon 1)
+            , test "WithSoba (WholeAndHalf 1) → ChooseChampon: 半玉3 → ちゃんぽん2玉（切り上げ）" <|
+                \_ ->
+                    { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.WholeAndHalf 1), toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                        |> Okonomiyaki.update (Okonomiyaki.SelectNoodleKind Okonomiyaki.Champon)
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithChampon 2)
+            , test "WithSoba (Whole 2) → ChooseUdon: 数量維持" <|
+                \_ ->
+                    { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 2), toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                        |> Okonomiyaki.update (Okonomiyaki.SelectNoodleKind Okonomiyaki.Udon)
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithUdon (Okonomiyaki.Whole 2))
+            , test "WithChampon 2 → ChooseSoba: Whole 2" <|
+                \_ ->
+                    { noodleSelection = Okonomiyaki.WithChampon 2, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                        |> Okonomiyaki.update (Okonomiyaki.SelectNoodleKind Okonomiyaki.Soba)
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithSoba (Okonomiyaki.Whole 2))
+            , test "同じ種類を再選択しても変わらない" <|
+                \_ ->
+                    { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.WholeAndHalf 2), toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                        |> Okonomiyaki.update (Okonomiyaki.SelectNoodleKind Okonomiyaki.Soba)
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithSoba (Okonomiyaki.WholeAndHalf 2))
+            , test "ChooseNoNoodle で麺なしになる" <|
+                \_ ->
+                    Okonomiyaki.init Okonomiyaki.SobaIri
+                        |> Okonomiyaki.update (Okonomiyaki.SelectNoodleKind Okonomiyaki.NoNoodle)
+                        |> .noodleSelection
+                        |> Expect.equal Okonomiyaki.WithoutNoodle
             ]
-        , describe "DecrementNoodle"
-            [ test "半玉減らす（Whole 1 → HalfBall）" <|
+        , describe "IncrementNoodleQuantity"
+            [ test "そば: Whole 1 → WholeAndHalf 1" <|
                 \_ ->
-                    Okonomiyaki.init Okonomiyaki.Soba
-                        |> Okonomiyaki.update (Okonomiyaki.DecrementNoodle Okonomiyaki.noodleSoba)
-                        |> .noodles
-                        |> List.map (\n -> ( n.noodle.kind, n.quantity ))
-                        |> Expect.equal [ ( Okonomiyaki.NoodleKindSoba, Okonomiyaki.HalfBall ) ]
-            , test "0になったら削除される" <|
+                    Okonomiyaki.init Okonomiyaki.SobaIri
+                        |> Okonomiyaki.update Okonomiyaki.IncrementNoodleQuantity
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithSoba (Okonomiyaki.WholeAndHalf 1))
+            , test "うどん: Whole 1 → WholeAndHalf 1" <|
                 \_ ->
-                    Okonomiyaki.init Okonomiyaki.Soba
-                        |> Okonomiyaki.update (Okonomiyaki.DecrementNoodle Okonomiyaki.noodleSoba)
-                        |> Okonomiyaki.update (Okonomiyaki.DecrementNoodle Okonomiyaki.noodleSoba)
-                        |> .noodles
+                    Okonomiyaki.init Okonomiyaki.UdonIri
+                        |> Okonomiyaki.update Okonomiyaki.IncrementNoodleQuantity
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithUdon (Okonomiyaki.WholeAndHalf 1))
+            , test "ちゃんぽん: 1 → 2" <|
+                \_ ->
+                    { noodleSelection = Okonomiyaki.WithChampon 1, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                        |> Okonomiyaki.update Okonomiyaki.IncrementNoodleQuantity
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithChampon 2)
+            , test "WithoutNoodle に対しては何もしない" <|
+                \_ ->
+                    Okonomiyaki.init Okonomiyaki.YasaiIri
+                        |> Okonomiyaki.update Okonomiyaki.IncrementNoodleQuantity
+                        |> .noodleSelection
+                        |> Expect.equal Okonomiyaki.WithoutNoodle
+            ]
+        , describe "DecrementNoodleQuantity"
+            [ test "そば: Whole 1 → HalfBall" <|
+                \_ ->
+                    Okonomiyaki.init Okonomiyaki.SobaIri
+                        |> Okonomiyaki.update Okonomiyaki.DecrementNoodleQuantity
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithSoba Okonomiyaki.HalfBall)
+            , test "そば: HalfBall → WithoutNoodle" <|
+                \_ ->
+                    { noodleSelection = Okonomiyaki.WithSoba Okonomiyaki.HalfBall, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                        |> Okonomiyaki.update Okonomiyaki.DecrementNoodleQuantity
+                        |> .noodleSelection
+                        |> Expect.equal Okonomiyaki.WithoutNoodle
+            , test "ちゃんぽん: 2 → 1" <|
+                \_ ->
+                    { noodleSelection = Okonomiyaki.WithChampon 2, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                        |> Okonomiyaki.update Okonomiyaki.DecrementNoodleQuantity
+                        |> .noodleSelection
+                        |> Expect.equal (Okonomiyaki.WithChampon 1)
+            , test "ちゃんぽん: 1 → WithoutNoodle" <|
+                \_ ->
+                    { noodleSelection = Okonomiyaki.WithChampon 1, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
+                        |> Okonomiyaki.update Okonomiyaki.DecrementNoodleQuantity
+                        |> .noodleSelection
+                        |> Expect.equal Okonomiyaki.WithoutNoodle
+            ]
+        , describe "noodleBadges"
+            [ test "WithoutNoodle → 空リスト" <|
+                \_ ->
+                    Okonomiyaki.noodleBadges Okonomiyaki.WithoutNoodle
                         |> Expect.equal []
+            , test "WithSoba (Whole 1) → そば 1玉" <|
+                \_ ->
+                    Okonomiyaki.noodleBadges (Okonomiyaki.WithSoba (Okonomiyaki.Whole 1))
+                        |> List.map (\b -> ( b.name, b.quantityDisplay ))
+                        |> Expect.equal [ ( "そば", "1" ) ]
+            , test "WithUdon (WholeAndHalf 1) → うどん 1.5玉" <|
+                \_ ->
+                    Okonomiyaki.noodleBadges (Okonomiyaki.WithUdon (Okonomiyaki.WholeAndHalf 1))
+                        |> List.map (\b -> ( b.name, b.quantityDisplay ))
+                        |> Expect.equal [ ( "うどん", "1.5" ) ]
+            , test "WithChampon 1 → そば0.5玉 + うどん0.5玉" <|
+                \_ ->
+                    Okonomiyaki.noodleBadges (Okonomiyaki.WithChampon 1)
+                        |> List.map (\b -> ( b.name, b.quantityDisplay ))
+                        |> Expect.equal
+                            [ ( "そば", "0.5" )
+                            , ( "うどん", "0.5" )
+                            ]
+            , test "WithChampon 2 → そば1玉 + うどん1玉" <|
+                \_ ->
+                    Okonomiyaki.noodleBadges (Okonomiyaki.WithChampon 2)
+                        |> List.map (\b -> ( b.name, b.quantityDisplay ))
+                        |> Expect.equal
+                            [ ( "そば", "1" )
+                            , ( "うどん", "1" )
+                            ]
+            , test "WithChampon 3 → そば1.5玉 + うどん1.5玉" <|
+                \_ ->
+                    Okonomiyaki.noodleBadges (Okonomiyaki.WithChampon 3)
+                        |> List.map (\b -> ( b.name, b.quantityDisplay ))
+                        |> Expect.equal
+                            [ ( "そば", "1.5" )
+                            , ( "うどん", "1.5" )
+                            ]
             ]
         , describe "ToggleTopping"
             [ test "未選択なら quantity=1 で追加される" <|
                 \_ ->
-                    Okonomiyaki.init Okonomiyaki.Yasai
+                    Okonomiyaki.init Okonomiyaki.YasaiIri
                         |> Okonomiyaki.update (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten)
                         |> .toppings
                         |> List.map (\t -> ( t.topping.kind, t.quantity ))
                         |> Expect.equal [ ( Okonomiyaki.ToppingKindIkaten, 1 ) ]
             , test "選択済みなら削除される" <|
                 \_ ->
-                    Okonomiyaki.init Okonomiyaki.Yasai
+                    Okonomiyaki.init Okonomiyaki.YasaiIri
                         |> Okonomiyaki.update (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten)
                         |> Okonomiyaki.update (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten)
                         |> .toppings

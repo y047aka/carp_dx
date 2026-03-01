@@ -99,9 +99,9 @@ menuItemToBaseKind menuItem =
 
 baseMenuEntries : List { menuItem : MenuItem, baseKind : BaseKind }
 baseMenuEntries =
-    [ { menuItem = baseYasai, baseKind = Yasai }
-    , { menuItem = baseSoba, baseKind = Soba }
-    , { menuItem = baseUdon, baseKind = Udon }
+    [ { menuItem = baseYasai, baseKind = YasaiIri }
+    , { menuItem = baseSoba, baseKind = SobaIri }
+    , { menuItem = baseUdon, baseKind = UdonIri }
     , { menuItem = baseZenbuIri, baseKind = ZenbuIri }
     ]
 

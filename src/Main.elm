@@ -6,7 +6,7 @@ import Html.Attributes exposing (checked, class, classList, disabled, type_)
 import Html.Events exposing (onClick)
 import Menu exposing (MenuCategory, MenuItem)
 import MenuData
-import Okonomiyaki exposing (Noodle, Okonomiyaki, Topping, ToppingAddition)
+import Okonomiyaki exposing (NoodleKind(..), NoodleSelection(..), Okonomiyaki, Topping, ToppingAddition, toNoodleKind)
 import Order exposing (BaseOrderItem, Order, OrderItem, OrderItemContent(..), OrderItemId, StandaloneOrderItem)
 
 
@@ -425,17 +425,17 @@ baseOrderView itemId baseOrderItem =
             ]
 
         -- 麺・トッピング（badge表示）
-        , if List.isEmpty okonomiyaki.noodles && List.isEmpty okonomiyaki.toppings then
+        , if okonomiyaki.noodleSelection == WithoutNoodle && List.isEmpty okonomiyaki.toppings then
             text ""
 
           else
             div [ class "flex flex-wrap gap-1.5 mb-2 pl-1" ]
                 (List.concat
-                    [ okonomiyaki.noodles
+                    [ Okonomiyaki.noodleBadges okonomiyaki.noodleSelection
                         |> List.map
-                            (\n ->
+                            (\badge ->
                                 span [ class "px-2.5 py-1 bg-base-300 rounded-full text-xs font-medium" ]
-                                    [ text (n.noodle.name ++ " " ++ Okonomiyaki.noodleQuantityDisplay n.quantity ++ "玉 ¥" ++ String.fromInt (Okonomiyaki.noodleAdditionPrice n * quantity)) ]
+                                    [ text (badge.name ++ " " ++ badge.quantityDisplay ++ "玉") ]
                             )
                     , okonomiyaki.toppings
                         |> List.map
@@ -522,10 +522,7 @@ editBaseModal model =
                                 -- 麺セクション
                                 , div [ class "mb-6" ]
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "麺" ]
-                                    , div [ class "divide-y divide-base-300" ]
-                                        (Okonomiyaki.allNoodles
-                                            |> List.map (noodleMenuItem itemId okonomiyaki)
-                                        )
+                                    , noodleSelectionView itemId okonomiyaki
                                     ]
 
                                 -- トッピングセクション
@@ -547,17 +544,17 @@ editBaseModal model =
                                         [ text (Okonomiyaki.baseName okonomiyaki) ]
 
                                     -- 麺・トッピング（badge表示）
-                                    , if List.isEmpty okonomiyaki.noodles && List.isEmpty okonomiyaki.toppings then
+                                    , if okonomiyaki.noodleSelection == WithoutNoodle && List.isEmpty okonomiyaki.toppings then
                                         text ""
 
                                       else
                                         div [ class "flex flex-wrap gap-1.5 mb-3" ]
                                             (List.concat
-                                                [ okonomiyaki.noodles
+                                                [ Okonomiyaki.noodleBadges okonomiyaki.noodleSelection
                                                     |> List.map
-                                                        (\n ->
+                                                        (\badge ->
                                                             span [ class "px-2.5 py-1 bg-base-200 rounded-full text-xs font-medium" ]
-                                                                [ text (n.noodle.name ++ " (" ++ Okonomiyaki.noodleQuantityDisplay n.quantity ++ "玉)") ]
+                                                                [ text (badge.name ++ " (" ++ badge.quantityDisplay ++ "玉)") ]
                                                         )
                                                 , okonomiyaki.toppings
                                                     |> List.map
@@ -602,64 +599,61 @@ editBaseModal model =
                         ]
 
 
-noodleMenuItem : OrderItemId -> Okonomiyaki -> Noodle -> Html Msg
-noodleMenuItem itemId baseOrderItem noodle =
+noodleSelectionView : OrderItemId -> Okonomiyaki -> Html Msg
+noodleSelectionView itemId okonomiyaki =
     let
-        -- noodles リスト内の数量（選択されていなければ Nothing）
-        maybeNoodleAddition =
-            baseOrderItem.noodles
-                |> List.filter (\n -> n.noodle.kind == noodle.kind)
-                |> List.head
+        currentSelection =
+            okonomiyaki.noodleSelection
 
-        isSelected =
-            maybeNoodleAddition /= Nothing
+        currentKind =
+            toNoodleKind currentSelection
 
-        priceText =
-            case maybeNoodleAddition of
-                Just na ->
-                    "¥" ++ String.fromInt (Okonomiyaki.noodleAdditionPrice na)
+        hasNoodle =
+            currentKind /= NoNoodle
 
-                Nothing ->
-                    "¥" ++ String.fromInt (Okonomiyaki.noodleAdditionPrice { noodle = noodle, quantity = Okonomiyaki.Whole 1 })
+        noodleKindButton label choice =
+            button
+                [ class "btn btn-sm rounded-xl flex-1"
+                , classList
+                    [ ( "btn-primary", currentKind == choice )
+                    , ( "btn-outline", currentKind /= choice )
+                    ]
+                , onClick (OrderMsg (Order.EditOkonomiyaki itemId (Okonomiyaki.SelectNoodleKind choice)))
+                ]
+                [ text label ]
     in
-    div
-        [ class "flex items-center justify-between py-2"
-        , classList [ ( "text-success", isSelected ) ]
-        ]
-        [ -- 左側: 名前と価格
-          div [ class "flex-1 text-left" ]
-            [ div [ class "text-base font-bold" ] [ text noodle.name ]
-            , div [ class "text-sm" ]
-                [ text priceText ]
+    div []
+        [ -- 麺の種類選択
+          div [ class "grid grid-cols-4 gap-2 mb-3" ]
+            [ noodleKindButton "なし" NoNoodle
+            , noodleKindButton "そば" Soba
+            , noodleKindButton "うどん" Udon
+            , noodleKindButton "ちゃんぽん" Champon
             ]
 
-        -- 右側: 数量コントロール
-        , div [ class "flex items-center gap-2" ]
-            [ button
-                [ class "btn btn-xs btn-circle btn-outline"
-                , onClick (OrderMsg (Order.EditOkonomiyaki itemId (Okonomiyaki.DecrementNoodle noodle)))
-                , disabled (not isSelected)
+        -- 数量コントロール（麺が選択されている場合のみ表示）
+        , if hasNoodle then
+            div [ class "flex items-center justify-between py-2 px-2 bg-base-200 rounded-lg" ]
+                [ div [ class "text-base font-bold" ]
+                    [ text (Okonomiyaki.noodleSelectionName currentSelection) ]
+                , div [ class "flex items-center gap-2" ]
+                    [ button
+                        [ class "btn btn-xs btn-circle btn-outline"
+                        , onClick (OrderMsg (Order.EditOkonomiyaki itemId Okonomiyaki.DecrementNoodleQuantity))
+                        ]
+                        [ text "−" ]
+                    , span [ class "text-lg font-bold w-12 text-center" ]
+                        [ text (Okonomiyaki.noodleSelectionDisplay currentSelection ++ "玉") ]
+                    , button
+                        [ class "btn btn-xs btn-circle btn-primary"
+                        , onClick (OrderMsg (Order.EditOkonomiyaki itemId Okonomiyaki.IncrementNoodleQuantity))
+                        ]
+                        [ text "+" ]
+                    ]
                 ]
-                [ text "−" ]
-            , span
-                [ class "text-lg font-bold w-12 text-center"
-                , classList [ ( "text-base-content/30", not isSelected ) ]
-                ]
-                [ text
-                    (case maybeNoodleAddition of
-                        Just na ->
-                            Okonomiyaki.noodleQuantityDisplay na.quantity ++ "玉"
 
-                        Nothing ->
-                            "0玉"
-                    )
-                ]
-            , button
-                [ class "btn btn-xs btn-circle btn-primary"
-                , onClick (OrderMsg (Order.EditOkonomiyaki itemId (Okonomiyaki.IncrementNoodle noodle)))
-                ]
-                [ text "+" ]
-            ]
+          else
+            text ""
         ]
 
 
