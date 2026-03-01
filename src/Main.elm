@@ -1,9 +1,9 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, button, div, h1, h2, h3, input, span, text)
-import Html.Attributes exposing (checked, class, classList, disabled, type_)
-import Html.Events exposing (onClick)
+import Html exposing (Html, button, div, h1, h2, h3, input, option, select, span, text)
+import Html.Attributes exposing (checked, class, classList, disabled, selected, type_, value)
+import Html.Events exposing (onClick, onInput)
 import Menu exposing (MenuCategory, MenuItem)
 import MenuData
 import Okonomiyaki exposing (NoodleKind(..), NoodleSelection(..), Okonomiyaki, Topping, ToppingAddition, toNoodleKind)
@@ -502,31 +502,64 @@ editBaseModal model =
                         okonomiyaki =
                             baseOrderItem.okonomiyaki
 
-                        modalTitle =
-                            if model.isAddingNewBase then
-                                "「" ++ Okonomiyaki.baseName okonomiyaki ++ "」をカスタマイズ"
-
-                            else
-                                "「" ++ Okonomiyaki.baseName okonomiyaki ++ "」を編集"
+                        totalPrice =
+                            Okonomiyaki.calculateTotal okonomiyaki * baseOrderItem.quantity
                     in
                     div [ class "modal modal-open" ]
                         [ div [ class "modal-box max-w-lg max-h-[90vh] flex flex-col p-0" ]
-                            [ -- スクロール可能なコンテンツエリア
-                              div [ class "flex-1 overflow-y-auto p-6" ]
-                                [ -- ヘッダー
-                                  div [ class "mb-6" ]
-                                    [ h2 [ class "font-bold text-2xl mb-2" ]
-                                        [ text modalTitle ]
+                            [ -- 固定ヘッダー（商品名とカスタマイズ内容）
+                              div [ class "flex-shrink-0 border-b border-base-300 p-6" ]
+                                [ div [ class "flex items-start justify-between mb-4" ]
+                                    [ h2 [ class "font-bold text-2xl" ]
+                                        [ text (Okonomiyaki.baseName okonomiyaki) ]
+                                    , button
+                                        [ class "btn btn-circle btn-ghost"
+                                        , onClick
+                                            (if model.isAddingNewBase then
+                                                CancelAddingBase
+
+                                             else
+                                                CloseEditModal
+                                            )
+                                        ]
+                                        [ text "✕" ]
                                     ]
 
-                                -- 麺セクション
-                                , div [ class "mb-6" ]
+                                -- 麺・トッピング（badge表示）
+                                , if okonomiyaki.noodleSelection == WithoutNoodle && List.isEmpty okonomiyaki.toppings then
+                                    text ""
+
+                                  else
+                                    div [ class "flex flex-wrap gap-1.5" ]
+                                        (List.concat
+                                            [ Okonomiyaki.noodleBadges okonomiyaki.noodleSelection
+                                                |> List.map
+                                                    (\badge ->
+                                                        span [ class "badge badge-ghost badge-sm" ]
+                                                            [ text (badge.name ++ " (" ++ badge.quantityDisplay ++ "玉)") ]
+                                                    )
+                                            , Okonomiyaki.toppingBadges okonomiyaki
+                                                |> List.map
+                                                    (\badge ->
+                                                        span [ class "badge badge-ghost badge-sm" ]
+                                                            [ text badge.name ]
+                                                    )
+                                            ]
+                                        )
+                                ]
+
+                            -- スクロール可能なコンテンツエリア
+                            , div [ class "flex-1 overflow-y-auto p-6" ]
+                                [ -- 麺セクション
+                                  div [ class "mb-2" ]
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "麺" ]
                                     , noodleSelectionView itemId okonomiyaki
                                     ]
 
+                                , div [ class "divider my-2" ] []
+
                                 -- トッピングセクション
-                                , div [ class "mb-6" ]
+                                , div []
                                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "トッピング" ]
                                     , div [ class "divide-y divide-base-300" ]
                                         (Okonomiyaki.allToppings
@@ -535,68 +568,39 @@ editBaseModal model =
                                     ]
                                 ]
 
-                            -- 固定フッター
-                            , div [ class "flex-shrink-0 border-t border-base-300 bg-base-200 p-4" ]
-                                [ -- サマリーカード
-                                  div [ class "bg-base-100 rounded-xl p-4 border border-base-300 mb-3" ]
-                                    [ -- ベース
-                                      div [ class "font-bold mb-3" ]
-                                        [ text (Okonomiyaki.baseName okonomiyaki) ]
-
-                                    -- 麺・トッピング（badge表示）
-                                    , if okonomiyaki.noodleSelection == WithoutNoodle && List.isEmpty okonomiyaki.toppings then
-                                        text ""
-
-                                      else
-                                        div [ class "flex flex-wrap gap-1.5 mb-3" ]
-                                            (List.concat
-                                                [ Okonomiyaki.noodleBadges okonomiyaki.noodleSelection
-                                                    |> List.map
-                                                        (\badge ->
-                                                            span [ class "px-2.5 py-1 bg-base-200 rounded-full text-xs font-medium" ]
-                                                                [ text (badge.name ++ " (" ++ badge.quantityDisplay ++ "玉)") ]
-                                                        )
-                                                , Okonomiyaki.toppingBadges okonomiyaki
-                                                    |> List.map
-                                                        (\badge ->
-                                                            span [ class "px-2.5 py-1 bg-base-200 rounded-full text-xs font-medium" ]
-                                                                [ text badge.name ]
-                                                        )
-                                                ]
-                                            )
-
-                                    -- 小計
-                                    , div [ class "flex items-center justify-between pt-3 border-t border-base-300" ]
-                                        [ span [ class "text-sm font-semibold text-base-content/70" ] [ text "小計" ]
-                                        , span [ class "text-2xl font-bold text-primary" ]
-                                            [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal okonomiyaki * baseOrderItem.quantity)) ]
-                                        ]
+                            -- 固定フッター（確定ボタンのみ）
+                            , div [ class "flex-shrink-0 border-t border-base-300 p-4" ]
+                                [ button
+                                    [ class "btn btn-primary btn-block btn-lg rounded-full"
+                                    , onClick CloseEditModal
                                     ]
+                                    [ text
+                                        (if model.isAddingNewBase then
+                                            "追加する（¥" ++ String.fromInt totalPrice ++ "）"
 
-                                -- アクションボタン
-                                , if model.isAddingNewBase then
-                                    div [ class "grid grid-cols-2 gap-3" ]
-                                        [ button
-                                            [ class "btn btn-outline btn-lg rounded-xl"
-                                            , onClick CancelAddingBase
-                                            ]
-                                            [ text "キャンセル" ]
-                                        , button
-                                            [ class "btn btn-primary btn-lg rounded-xl"
-                                            , onClick CloseEditModal
-                                            ]
-                                            [ text "確定" ]
-                                        ]
-
-                                  else
-                                    button
-                                        [ class "btn btn-primary btn-block btn-lg rounded-xl"
-                                        , onClick CloseEditModal
-                                        ]
-                                        [ text "完了" ]
+                                         else
+                                            "完了（¥" ++ String.fromInt totalPrice ++ "）"
+                                        )
+                                    ]
                                 ]
                             ]
                         ]
+
+
+noodleKindFromString : String -> NoodleKind
+noodleKindFromString s =
+    case s of
+        "soba" ->
+            Soba
+
+        "udon" ->
+            Udon
+
+        "champon" ->
+            Champon
+
+        _ ->
+            NoNoodle
 
 
 noodleSelectionView : OrderItemId -> Okonomiyaki -> Html Msg
@@ -610,32 +614,24 @@ noodleSelectionView itemId okonomiyaki =
 
         hasNoodle =
             currentKind /= NoNoodle
-
-        noodleKindButton label choice =
-            button
-                [ class "btn btn-sm rounded-xl flex-1"
-                , classList
-                    [ ( "btn-primary", currentKind == choice )
-                    , ( "btn-outline", currentKind /= choice )
-                    ]
-                , onClick (OrderMsg (Order.EditOkonomiyaki itemId (Okonomiyaki.SelectNoodleKind choice)))
-                ]
-                [ text label ]
     in
     div []
-        [ -- 麺の種類選択
-          div [ class "grid grid-cols-4 gap-2 mb-3" ]
-            [ noodleKindButton "なし" NoNoodle
-            , noodleKindButton "そば" Soba
-            , noodleKindButton "うどん" Udon
-            , noodleKindButton "ちゃんぽん" Champon
+        [ -- 麺の種類選択（selectbox）
+          select
+            [ class "select select-lg w-full mb-3"
+            , onInput (\s -> OrderMsg (Order.EditOkonomiyaki itemId (Okonomiyaki.SelectNoodleKind (noodleKindFromString s))))
+            ]
+            [ option [ value "none", selected (currentKind == NoNoodle) ] [ text "なし" ]
+            , option [ value "soba", selected (currentKind == Soba) ] [ text "そば" ]
+            , option [ value "udon", selected (currentKind == Udon) ] [ text "うどん" ]
+            , option [ value "champon", selected (currentKind == Champon) ] [ text "ちゃんぽん" ]
             ]
 
         -- 数量コントロール（麺が選択されている場合のみ表示）
         , if hasNoodle then
             div [ class "flex items-center justify-between py-2 px-2 bg-base-200 rounded-lg" ]
                 [ div [ class "text-base font-bold" ]
-                    [ text (Okonomiyaki.noodleSelectionName currentSelection) ]
+                    [ text "数量" ]
                 , div [ class "flex items-center gap-2" ]
                     [ button
                         [ class "btn btn-xs btn-circle btn-outline"
@@ -670,8 +666,8 @@ toppingMenuItem itemId currentToppings item =
         , onClick (OrderMsg (Order.EditOkonomiyaki itemId (Okonomiyaki.ToggleTopping item)))
         ]
         [ div [ class "flex-1" ]
-            [ div [ class "text-base font-bold" ] [ text item.name ]
-            , div [ class "text-sm text-base-content/70" ]
+            [ div [ class "text-lg font-bold" ] [ text item.name ]
+            , div [ class "text-sm text-base-content/60" ]
                 [ text ("¥" ++ String.fromInt item.price) ]
             ]
         , input
