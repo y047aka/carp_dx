@@ -437,11 +437,11 @@ baseOrderView itemId baseOrderItem =
                                 span [ class "px-2.5 py-1 bg-base-300 rounded-full text-xs font-medium" ]
                                     [ text (badge.name ++ " " ++ badge.quantityDisplay ++ "玉") ]
                             )
-                    , okonomiyaki.toppings
+                    , Okonomiyaki.toppingBadges okonomiyaki
                         |> List.map
-                            (\topping ->
+                            (\badge ->
                                 span [ class "px-2.5 py-1 bg-base-300 rounded-full text-xs font-medium" ]
-                                    [ text (topping.topping.name ++ " ¥" ++ String.fromInt (topping.topping.price * topping.quantity * quantity)) ]
+                                    [ text (badge.name ++ " ¥" ++ String.fromInt (badge.price * quantity)) ]
                             )
                     ]
                 )
@@ -556,11 +556,11 @@ editBaseModal model =
                                                             span [ class "px-2.5 py-1 bg-base-200 rounded-full text-xs font-medium" ]
                                                                 [ text (badge.name ++ " (" ++ badge.quantityDisplay ++ "玉)") ]
                                                         )
-                                                , okonomiyaki.toppings
+                                                , Okonomiyaki.toppingBadges okonomiyaki
                                                     |> List.map
-                                                        (\topping ->
+                                                        (\badge ->
                                                             span [ class "px-2.5 py-1 bg-base-200 rounded-full text-xs font-medium" ]
-                                                                [ text topping.topping.name ]
+                                                                [ text badge.name ]
                                                         )
                                                 ]
                                             )

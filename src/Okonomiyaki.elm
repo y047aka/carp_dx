@@ -8,6 +8,7 @@ module Okonomiyaki exposing
     , Okonomiyaki
     , Topping
     , ToppingAddition
+    , ToppingBadge
     , ToppingKind(..)
     , allToppings
     , baseKind
@@ -18,6 +19,7 @@ module Okonomiyaki exposing
     , noodleSelectionDisplay
     , noodleSelectionName
     , toNoodleKind
+    , toppingBadges
     , toppingCheese
     , toppingGarlic
     , toppingIkaten
@@ -144,6 +146,13 @@ type alias ToppingAddition =
 type alias NoodleBadge =
     { name : String
     , quantityDisplay : String
+    }
+
+
+{-| バッジ表示用のトッピング情報。 -}
+type alias ToppingBadge =
+    { name : String
+    , price : Int
     }
 
 
@@ -540,6 +549,64 @@ init kind =
     , toppings = preset.defaultToppings
     , selectedBase = kind
     }
+
+
+{-| トッピングのバッジ一覧を生成する。
+
+全部入り条件を満たす場合、イカとエビを「イカ + エビ ¥500」に統合する。
+
+-}
+toppingBadges : Okonomiyaki -> List ToppingBadge
+toppingBadges okonomiyaki =
+    if baseKind okonomiyaki == ZenbuIri then
+        let
+            squidAddition =
+                List.filter (\t -> t.topping.kind == ToppingKindSquid) okonomiyaki.toppings
+                    |> List.head
+
+            shrimpAddition =
+                List.filter (\t -> t.topping.kind == ToppingKindShrimp) okonomiyaki.toppings
+                    |> List.head
+
+            combinedBadge =
+                { name = "イカ + エビ", price = 500 }
+
+            extraBadges =
+                case ( squidAddition, shrimpAddition ) of
+                    ( Just squid, Just shrimp ) ->
+                        let
+                            extraSquid =
+                                squid.quantity - 1
+
+                            extraShrimp =
+                                shrimp.quantity - 1
+                        in
+                        (if extraSquid > 0 then
+                            [ { name = squid.topping.name, price = squid.topping.price * extraSquid } ]
+
+                         else
+                            []
+                        )
+                            ++ (if extraShrimp > 0 then
+                                    [ { name = shrimp.topping.name, price = shrimp.topping.price * extraShrimp } ]
+
+                                else
+                                    []
+                               )
+
+                    _ ->
+                        []
+
+            otherBadges =
+                okonomiyaki.toppings
+                    |> List.filter (\t -> t.topping.kind /= ToppingKindSquid && t.topping.kind /= ToppingKindShrimp)
+                    |> List.map (\t -> { name = t.topping.name, price = t.topping.price * t.quantity })
+        in
+        combinedBadge :: extraBadges ++ otherBadges
+
+    else
+        okonomiyaki.toppings
+            |> List.map (\t -> { name = t.topping.name, price = t.topping.price * t.quantity })
 
 
 {-| お好み焼き1枚あたりの金額を計算する。
