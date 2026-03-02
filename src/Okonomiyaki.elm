@@ -12,10 +12,12 @@ module Okonomiyaki exposing
     , ToppingKind(..)
     , allToppings
     , baseKind
+    , baseOkonomiyakiPrice
     , baseName
     , calculateTotal
     , init
     , noodleBadges
+    , noodlePrice
     , noodleSelectionDisplay
     , noodleSelectionName
     , toNoodleKind
@@ -609,6 +611,27 @@ toppingBadges okonomiyaki =
             |> List.map (\t -> { name = t.topping.name, price = t.topping.price * t.quantity })
 
 
+{-| お好み焼き本体の基本料金（麺・トッピング抜き）。 -}
+baseOkonomiyakiPrice : Int
+baseOkonomiyakiPrice =
+    900
+
+
+{-| 麺料金を計算する。麺なしの場合は 0 を返す。 -}
+noodlePrice : Okonomiyaki -> Int
+noodlePrice okonomiyaki =
+    let
+        totalHalfBalls =
+            selectionTotalHalfBalls okonomiyaki.noodleSelection
+    in
+    if totalHalfBalls == 0 then
+        0
+
+    else
+        -- 入場料は麺全体で1回だけ加算、半玉単価 × 合計半玉数
+        noodleEntryPrice + noodleHalfBallPrice * totalHalfBalls
+
+
 {-| お好み焼き1枚あたりの金額を計算する。
 
 計算式：`基本料金（900円） + 麺料金 + トッピング料金 - 割引`
@@ -628,20 +651,6 @@ toppingBadges okonomiyaki =
 calculateTotal : Okonomiyaki -> Int
 calculateTotal okonomiyaki =
     let
-        baseOkonomiyakiPrice =
-            900
-
-        totalHalfBalls =
-            selectionTotalHalfBalls okonomiyaki.noodleSelection
-
-        noodlePrice =
-            if totalHalfBalls == 0 then
-                0
-
-            else
-                -- 入場料は麺全体で1回だけ加算、半玉単価 × 合計半玉数
-                noodleEntryPrice + noodleHalfBallPrice * totalHalfBalls
-
         toppingsPrice =
             okonomiyaki.toppings
                 |> List.map (\t -> t.topping.price * t.quantity)
@@ -654,7 +663,7 @@ calculateTotal okonomiyaki =
             else
                 0
     in
-    baseOkonomiyakiPrice + noodlePrice + toppingsPrice - zenbuIriDiscount
+    baseOkonomiyakiPrice + noodlePrice okonomiyaki + toppingsPrice - zenbuIriDiscount
 
 
 -- Msg / update

@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, button, div, h1, h2, span, text)
+import Html exposing (Html, button, details, div, h1, h2, span, summary, text)
 import Html.Attributes exposing (class, classList, disabled)
 import Html.Events exposing (onClick)
 import Menu exposing (MenuCategory, MenuItem)
@@ -24,7 +24,6 @@ type alias Model =
     { currentOrder : Order
     , selectedCategory : MenuCategory
     , showCheckoutModal : Bool
-    , orderSummaryExpanded : Bool
     , editModalState : Modal.State
     }
 
@@ -34,7 +33,6 @@ init =
     { currentOrder = Order.emptyOrder
     , selectedCategory = Menu.Base
     , showCheckoutModal = False
-    , orderSummaryExpanded = False
     , editModalState = Modal.init
     }
 
@@ -49,7 +47,6 @@ type Msg
     | ResetOrder
     | OpenEditModal OrderItemId
     | OpenStandaloneModal MenuItem
-    | ToggleOrderSummary
 
 
 update : Msg -> Model -> Model
@@ -105,7 +102,10 @@ update msg model =
         OpenEditModal itemId ->
             case getBaseItemById itemId model.currentOrder of
                 Just baseOrderItem ->
-                    { model | editModalState = Modal.Editing itemId baseOrderItem.okonomiyaki }
+                    { model
+                        | editModalState = Modal.Editing itemId baseOrderItem.okonomiyaki
+                        , showCheckoutModal = False
+                    }
 
                 Nothing ->
                     model
@@ -136,9 +136,6 @@ update msg model =
                 Nothing ->
                     { model | editModalState = Modal.SelectingStandaloneItem menuItem 1 Nothing }
 
-        ToggleOrderSummary ->
-            { model | orderSummaryExpanded = not model.orderSummaryExpanded }
-
 
 view : Model -> Html Msg
 view model =
@@ -146,7 +143,7 @@ view model =
         total =
             Order.calculateTotal model.currentOrder
     in
-    div [ class ("min-h-screen bg-base-200 " ++ (if model.orderSummaryExpanded then "pb-80" else "pb-16")) ]
+    div [ class "min-h-screen bg-base-200" ]
         [ -- ヘッダー
           div [ class "navbar bg-primary text-primary-content sticky top-0 z-10" ]
             [ div [ class "flex-1" ]
@@ -180,9 +177,6 @@ view model =
                 |> List.filter (\item -> item.category == model.selectedCategory)
                 |> List.map (menuItemCard model.currentOrder)
             )
-
-        -- 注文サマリー（固定ボトムシート）
-        , orderSummary model
 
         -- 会計モーダル
         , if model.showCheckoutModal then
@@ -359,41 +353,6 @@ hasItems model =
     not (List.isEmpty model.currentOrder.items)
 
 
-orderSummary : Model -> Html Msg
-orderSummary model =
-    div [ class "fixed bottom-0 left-0 right-0 bg-base-100 shadow-2xl rounded-t-3xl" ]
-        [ -- ハンドル（クリックで展開/折りたたみ）
-          div
-            [ class "flex flex-col items-center pt-3 pb-2 cursor-pointer select-none"
-            , onClick ToggleOrderSummary
-            ]
-            [ div [ class "w-10 h-1.5 bg-base-300 rounded-full mb-2" ] []
-            , if model.orderSummaryExpanded then
-                span [ class "text-xs text-base-content/40 font-medium tracking-widest uppercase" ] [ text "閉じる" ]
-
-              else if hasItems model then
-                span [ class "text-xs text-base-content/40 font-medium tracking-widest uppercase" ] [ text "注文を確認" ]
-
-              else
-                text ""
-            ]
-
-        -- 注文リスト（展開時のみ）
-        , if model.orderSummaryExpanded then
-            div [ class "px-4 pb-4 max-h-64 overflow-y-auto" ]
-                (if hasItems model then
-                    List.map orderItemView model.currentOrder.items
-
-                 else
-                    [ div [ class "text-center text-base-content/50 py-4" ]
-                        [ text "商品を選択してください" ]
-                    ]
-                )
-
-          else
-            text ""
-        ]
-
 
 orderItemView : OrderItem -> Html Msg
 orderItemView item =
@@ -414,95 +373,150 @@ baseOrderView itemId baseOrderItem =
 
         quantity =
             baseOrderItem.quantity
+
+        unitTotal =
+            Okonomiyaki.calculateTotal okonomiyaki
+
+        noodlePriceVal =
+            Okonomiyaki.noodlePrice okonomiyaki
+
+        noodleBadgesList =
+            Okonomiyaki.noodleBadges okonomiyaki.noodleSelection
+
+        toppingBadges =
+            Okonomiyaki.toppingBadges okonomiyaki
+
+        hasBreakdown =
+            noodlePriceVal > 0 || not (List.isEmpty toppingBadges)
     in
-    div [ class "mb-4 p-3 bg-base-200 rounded-lg" ]
-        [ -- お好み焼き本体
-          div [ class "flex flex-wrap items-center justify-between gap-2 mb-2" ]
-            [ div [ class "flex-1 min-w-[120px]" ]
-                [ div [ class "text-lg font-bold" ] [ text (Okonomiyaki.baseName okonomiyaki) ]
-                , div [ class "text-sm text-base-content/70" ]
-                    [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal okonomiyaki) ++ " × " ++ String.fromInt quantity)
-                    ]
-                ]
-            , button
-                [ class "btn btn-sm btn-outline btn-info rounded-xl"
-                , onClick (OpenEditModal itemId)
-                ]
-                [ text "編集" ]
-            , div [ class "flex items-center gap-2" ]
-                [ button
-                    [ class "btn btn-sm btn-circle btn-outline"
-                    , onClick (OrderMsg (Order.DecrementQuantity itemId))
-                    ]
-                    [ text "−" ]
-                , span [ class "text-xl font-bold w-8 text-center" ]
-                    [ text (String.fromInt quantity) ]
-                , button
-                    [ class "btn btn-sm btn-circle btn-primary"
-                    , onClick (OrderMsg (Order.IncrementQuantity itemId))
-                    ]
-                    [ text "+" ]
-                ]
-            ]
+    div [ class "card bg-base-100 card-border" ]
+        [ div [ class "card-body p-4 gap-2" ]
+            [ -- 行1: 品名 + 単価 + 編集ボタン + 数量コントロール
+              orderItemHeaderRow itemId
+                (Okonomiyaki.baseName okonomiyaki)
+                unitTotal
+                quantity
+                (Just (OpenEditModal itemId))
 
-        -- 麺・トッピング（badge表示）
-        , if okonomiyaki.noodleSelection == WithoutNoodle && List.isEmpty okonomiyaki.toppings then
-            text ""
-
-          else
-            div [ class "flex flex-wrap gap-1.5 mb-2 pl-1" ]
-                (List.concat
-                    [ Okonomiyaki.noodleBadges okonomiyaki.noodleSelection
-                        |> List.map
+            -- 行2: 麺・トッピングバッジ + 合計金額
+            , div [ class "flex items-center justify-between" ]
+                [ div [ class "flex items-center gap-1.5 flex-wrap" ]
+                    (List.map
+                        (\badge ->
+                            span [ class "badge badge-sm badge-soft" ]
+                                [ text (badge.name ++ " " ++ badge.quantityDisplay ++ "玉") ]
+                        )
+                        noodleBadgesList
+                        ++ List.map
                             (\badge ->
-                                span [ class "px-2.5 py-1 bg-base-300 rounded-full text-xs font-medium" ]
-                                    [ text (badge.name ++ " " ++ badge.quantityDisplay ++ "玉") ]
+                                span [ class "badge badge-sm badge-soft" ]
+                                    [ text badge.name ]
                             )
-                    , Okonomiyaki.toppingBadges okonomiyaki
-                        |> List.map
-                            (\badge ->
-                                span [ class "px-2.5 py-1 bg-base-300 rounded-full text-xs font-medium" ]
-                                    [ text (badge.name ++ " ¥" ++ String.fromInt (badge.price * quantity)) ]
-                            )
-                    ]
-                )
-
-        -- 小計
-        , div [ class "flex justify-between pt-2 mt-2 border-t border-base-300" ]
-            [ span [ class "font-semibold" ] [ text "小計" ]
-            , span [ class "font-bold text-primary" ]
-                [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal okonomiyaki * quantity))
+                            toppingBadges
+                    )
+                , span [ class "text-xl font-bold text-primary" ]
+                    [ text ("¥" ++ String.fromInt (unitTotal * quantity)) ]
                 ]
+
+            -- 内訳（折りたたみ、麺またはトッピングがある場合のみ）
+            , if hasBreakdown then
+                details []
+                    [ summary [ class "text-xs text-base-content/40 cursor-pointer hover:text-base-content/70 list-none w-fit" ]
+                        [ text "内訳を表示する" ]
+                    , div [ class "mt-2 pl-3 space-y-0.5 text-sm text-base-content/60" ]
+                        (List.concat
+                            [ [ div [ class "flex justify-between" ]
+                                    [ span [] [ text "本体" ]
+                                    , span [] [ text ("¥" ++ String.fromInt Okonomiyaki.baseOkonomiyakiPrice) ]
+                                    ]
+                              ]
+                            , if noodlePriceVal > 0 then
+                                [ div [ class "flex justify-between" ]
+                                    [ span [] [ text "麺" ]
+                                    , span [] [ text ("¥" ++ String.fromInt noodlePriceVal) ]
+                                    ]
+                                ]
+
+                              else
+                                []
+                            , toppingBadges
+                                |> List.map
+                                    (\badge ->
+                                        div [ class "flex justify-between" ]
+                                            [ span [] [ text badge.name ]
+                                            , span [] [ text ("¥" ++ String.fromInt badge.price) ]
+                                            ]
+                                    )
+                            ]
+                        )
+                    ]
+
+              else
+                text ""
             ]
         ]
 
 
 
+quantityControlView : OrderItemId -> Int -> Html Msg
+quantityControlView itemId quantity =
+    div [ class "flex items-center gap-2" ]
+        [ button
+            [ class "btn btn-sm btn-circle btn-primary"
+            , onClick (OrderMsg (Order.DecrementQuantity itemId))
+            ]
+            [ text "−" ]
+        , span [ class "text-xl font-bold w-8 text-center" ]
+            [ text (String.fromInt quantity) ]
+        , button
+            [ class "btn btn-sm btn-circle btn-primary"
+            , onClick (OrderMsg (Order.IncrementQuantity itemId))
+            ]
+            [ text "+" ]
+        ]
+
+
+orderItemHeaderRow : OrderItemId -> String -> Int -> Int -> Maybe Msg -> Html Msg
+orderItemHeaderRow itemId name unitPrice quantity maybeEditMsg =
+    div [ class "flex items-center gap-2" ]
+        ([ div [ class "flex items-baseline gap-2 flex-1" ]
+            [ span [ class "text-lg font-bold" ] [ text name ]
+            , span [ class "text-sm text-base-content/50" ]
+                [ text ("¥" ++ String.fromInt unitPrice) ]
+            ]
+         ]
+            ++ (case maybeEditMsg of
+                    Just editMsg ->
+                        [ button
+                            [ class "btn btn-xs btn-ghost rounded-xl"
+                            , onClick editMsg
+                            ]
+                            [ text "編集" ]
+                        ]
+
+                    Nothing ->
+                        []
+               )
+            ++ [ quantityControlView itemId quantity ]
+        )
+
+
 standaloneOrderView : OrderItemId -> StandaloneOrderItem -> Html Msg
 standaloneOrderView itemId item =
-    div [ class "flex items-center justify-between py-2 border-b border-base-300" ]
-        [ div [ class "flex-1" ]
-            [ div [ class "text-lg font-semibold" ] [ text item.menuItem.name ]
-            , div [ class "text-sm text-base-content/70" ]
-                [ text ("¥" ++ String.fromInt item.menuItem.price ++ " × " ++ String.fromInt item.quantity)
+    div [ class "card bg-base-100 card-border" ]
+        [ div [ class "card-body p-4 gap-2" ]
+            [ -- 行1: 品名 + 単価 + 数量コントロール（編集ボタンなし）
+              orderItemHeaderRow itemId
+                item.menuItem.name
+                item.menuItem.price
+                item.quantity
+                Nothing
+
+            -- 行2: 合計金額
+            , div [ class "text-right" ]
+                [ span [ class "text-xl font-bold text-primary" ]
+                    [ text ("¥" ++ String.fromInt (item.menuItem.price * item.quantity)) ]
                 ]
-            ]
-        , div [ class "flex items-center gap-2" ]
-            [ button
-                [ class "btn btn-sm btn-circle btn-outline"
-                , onClick (OrderMsg (Order.DecrementQuantity itemId))
-                ]
-                [ text "−" ]
-            , span [ class "text-xl font-bold w-8 text-center" ]
-                [ text (String.fromInt item.quantity) ]
-            , button
-                [ class "btn btn-sm btn-circle btn-primary"
-                , onClick (OrderMsg (Order.IncrementQuantity itemId))
-                ]
-                [ text "+" ]
-            ]
-        , div [ class "text-lg font-bold text-right w-24" ]
-            [ text ("¥" ++ String.fromInt (item.menuItem.price * item.quantity))
             ]
         ]
 
@@ -514,57 +528,29 @@ checkoutModal model =
             Order.calculateTotal model.currentOrder
     in
     div [ class "modal modal-open" ]
-        [ div [ class "modal-box max-w-md" ]
-            [ h2 [ class "font-bold text-3xl mb-4 text-center" ] [ text "お会計" ]
-
-            -- 品目内訳
-            , div [ class "mb-4 divide-y divide-base-300" ]
-                (List.map checkoutItemRow model.currentOrder.items)
-
-            -- 合計金額
-            , div [ class "flex items-center justify-between p-4 bg-primary/10 rounded-3xl mb-6" ]
-                [ span [ class "text-2xl font-bold" ] [ text "合計" ]
-                , span [ class "text-4xl font-bold text-primary" ] [ text ("¥" ++ String.fromInt total) ]
+        [ div [ class "modal-box max-w-md max-h-[90vh] flex flex-col p-0" ]
+            [ -- ヘッダー
+              div [ class "flex-shrink-0 p-6 border-b border-base-300" ]
+                [ div [ class "flex items-start justify-between" ]
+                    [ h2 [ class "font-bold text-3xl" ] [ text "お会計" ]
+                    , button [ class "btn btn-ghost", onClick CloseCheckout ] [ text "戻る" ]
+                    ]
                 ]
 
-            , div [ class "modal-action grid grid-cols-2 gap-3" ]
-                [ button [ class "btn btn-outline btn-lg", onClick CloseCheckout ]
-                    [ text "戻る" ]
-                , button [ class "btn btn-primary btn-lg", onClick ResetOrder ]
-                    [ text "完了" ]
+            -- 品目一覧（スクロール可能）
+            , div [ class "flex-1 overflow-y-auto px-3 py-3 bg-base-300 space-y-3" ]
+                (List.map orderItemView model.currentOrder.items)
+
+            -- フッター（合計・ボタン）
+            , div [ class "flex-shrink-0 p-4 border-t border-base-300" ]
+                [ div [ class "flex items-center justify-between p-4 bg-primary/10 rounded-3xl mb-4" ]
+                    [ span [ class "text-2xl font-bold" ] [ text "合計" ]
+                    , span [ class "text-4xl font-bold text-primary" ] [ text ("¥" ++ String.fromInt total) ]
+                    ]
+                , button [ class "btn btn-primary btn-block btn-lg rounded-full flex justify-between px-8", onClick ResetOrder ]
+                    [ text "完了"
+                    , text (" ¥" ++ String.fromInt total)
+                    ]
                 ]
             ]
         ]
-
-
-checkoutItemRow : OrderItem -> Html Msg
-checkoutItemRow item =
-    case item.content of
-        BaseOrder baseOrderItem ->
-            let
-                okonomiyaki =
-                    baseOrderItem.okonomiyaki
-
-                quantity =
-                    baseOrderItem.quantity
-            in
-            div [ class "flex items-center justify-between py-2" ]
-                [ div [ class "flex-1" ]
-                    [ div [ class "font-semibold" ] [ text (Okonomiyaki.baseName okonomiyaki) ]
-                    , div [ class "text-sm text-base-content/60" ]
-                        [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal okonomiyaki) ++ " × " ++ String.fromInt quantity) ]
-                    ]
-                , div [ class "font-bold" ]
-                    [ text ("¥" ++ String.fromInt (Okonomiyaki.calculateTotal okonomiyaki * quantity)) ]
-                ]
-
-        StandaloneOrder standaloneItem ->
-            div [ class "flex items-center justify-between py-2" ]
-                [ div [ class "flex-1" ]
-                    [ div [ class "font-semibold" ] [ text standaloneItem.menuItem.name ]
-                    , div [ class "text-sm text-base-content/60" ]
-                        [ text ("¥" ++ String.fromInt standaloneItem.menuItem.price ++ " × " ++ String.fromInt standaloneItem.quantity) ]
-                    ]
-                , div [ class "font-bold" ]
-                    [ text ("¥" ++ String.fromInt (standaloneItem.menuItem.price * standaloneItem.quantity)) ]
-                ]
