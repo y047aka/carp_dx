@@ -227,98 +227,115 @@ standaloneQuantity order menuItem =
         |> Maybe.withDefault 0
 
 
+baseQuantity : Order -> MenuItem -> Int
+baseQuantity order menuItem =
+    case MenuData.menuItemToBaseKind menuItem of
+        Nothing ->
+            0
+
+        Just kind ->
+            order.items
+                |> List.filterMap
+                    (\item ->
+                        case item.content of
+                            BaseOrder b ->
+                                if Okonomiyaki.baseKind b.okonomiyaki == kind then
+                                    Just b.quantity
+
+                                else
+                                    Nothing
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.sum
+
+
 menuItemCard : Order -> MenuItem -> Html Msg
 menuItemCard order item =
     let
         priceText =
-            if item.category == Menu.Base then
-                case MenuData.menuItemToBaseKind item of
-                    Just kind ->
-                        "¥" ++ String.fromInt (Okonomiyaki.calculateTotal (Okonomiyaki.init kind)) ++ "〜"
+            case MenuData.menuItemToBaseKind item of
+                Just kind ->
+                    "¥" ++ String.fromInt (Okonomiyaki.calculateTotal (Okonomiyaki.init kind)) ++ "〜"
 
-                    Nothing ->
-                        "¥?"
+                Nothing ->
+                    "¥" ++ String.fromInt item.price
 
-            else
-                "¥" ++ String.fromInt item.price
-    in
-    case item.category of
-        Menu.Base ->
-            button
-                [ class "flex items-center justify-between w-full py-3 text-left hover:bg-base-200/50 active:bg-base-200"
-                , onClick (AddMenuItem item)
-                ]
-                [ div [ class "flex-1" ]
-                    [ div [ class "text-lg font-bold" ] [ text item.name ]
-                    , case MenuData.menuItemToBaseKind item of
-                        Just kind ->
-                            let
-                                defaultOkonomiyaki =
-                                    Okonomiyaki.init kind
+        qty =
+            case item.category of
+                Menu.Base ->
+                    baseQuantity order item
 
-                                noodleBadgesList =
-                                    Okonomiyaki.noodleBadges defaultOkonomiyaki.noodleSelection
-
-                                toppingBadgesList =
-                                    Okonomiyaki.toppingBadges defaultOkonomiyaki
-                            in
-                            if List.isEmpty noodleBadgesList && List.isEmpty toppingBadgesList then
-                                text ""
-
-                            else
-                                div [ class "flex flex-wrap gap-1 mt-1" ]
-                                    (List.concat
-                                        [ noodleBadgesList
-                                            |> List.map
-                                                (\badge ->
-                                                    span [ class "badge badge-ghost badge-sm" ]
-                                                        [ text (badge.name ++ " " ++ badge.quantityDisplay ++ "玉") ]
-                                                )
-                                        , toppingBadgesList
-                                            |> List.map
-                                                (\badge ->
-                                                    span [ class "badge badge-ghost badge-sm" ]
-                                                        [ text badge.name ]
-                                                )
-                                        ]
-                                    )
-
-                        Nothing ->
-                            text ""
-                    ]
-                , div [ class "flex items-center gap-2 flex-shrink-0 ml-2" ]
-                    [ div [ class "text-base-content/70" ] [ text priceText ]
-                    , span [ class "text-base-content/30 text-2xl" ] [ text "›" ]
-                    ]
-                ]
-
-        _ ->
-            let
-                qty =
+                _ ->
                     standaloneQuantity order item
-            in
-            button
-                [ class "flex items-center justify-between w-full py-2 text-left"
-                , onClick (OpenStandaloneModal item)
-                ]
-                [ div []
-                    [ div
-                        [ class "text-lg font-bold"
-                        , classList [ ( "text-success", qty > 0 ) ]
-                        ]
-                        [ text item.name ]
-                    , div [ class "text-sm text-base-content/70" ] [ text priceText ]
-                    ]
-                , div [ class "flex items-center gap-2 flex-shrink-0" ]
-                    [ if qty > 0 then
-                        span [ class "badge badge-primary badge-lg" ]
-                            [ text (String.fromInt qty) ]
 
-                      else
+        clickHandler =
+            case item.category of
+                Menu.Base ->
+                    AddMenuItem item
+
+                _ ->
+                    OpenStandaloneModal item
+
+        subBadges =
+            case MenuData.menuItemToBaseKind item of
+                Just kind ->
+                    let
+                        defaultOkonomiyaki =
+                            Okonomiyaki.init kind
+
+                        noodleBadgesList =
+                            Okonomiyaki.noodleBadges defaultOkonomiyaki.noodleSelection
+
+                        toppingBadgesList =
+                            Okonomiyaki.toppingBadges defaultOkonomiyaki
+                    in
+                    if List.isEmpty noodleBadgesList && List.isEmpty toppingBadgesList then
                         text ""
-                    , span [ class "text-base-content/30 text-2xl" ] [ text "›" ]
-                    ]
+
+                    else
+                        div [ class "flex flex-wrap gap-1.5 mt-1" ]
+                            (List.concat
+                                [ noodleBadgesList
+                                    |> List.map
+                                        (\badge ->
+                                            span [ class "badge badge-sm badge-soft" ]
+                                                [ text (badge.name ++ " " ++ badge.quantityDisplay ++ "玉") ]
+                                        )
+                                , toppingBadgesList
+                                    |> List.map
+                                        (\badge ->
+                                            span [ class "badge badge-sm badge-soft" ]
+                                                [ text badge.name ]
+                                        )
+                                ]
+                            )
+
+                Nothing ->
+                    text ""
+    in
+    button
+        [ class "flex items-center justify-between w-full py-2.5 text-left hover:bg-base-200/50 active:bg-base-200"
+        , onClick clickHandler
+        ]
+        [ div [ class "flex-1 flex flex-col justify-center gap-1 min-h-[2.5rem]" ]
+            [ div [ class "flex items-baseline gap-2.5" ]
+                [ div [ class "text-lg font-bold" ] [ text item.name ]
+                , div [ class "text-sm text-base-content/50" ] [ text priceText ]
                 ]
+            , subBadges
+            ]
+        , div [ class "flex items-center gap-2 flex-shrink-0" ]
+            [ if qty > 0 then
+                span [ class "badge badge-success badge-lg" ]
+                    [ text (String.fromInt qty) ]
+
+              else
+                text ""
+            , span [ class "text-base-content/30 text-2xl" ] [ text "›" ]
+            ]
+        ]
 
 
 getBaseItemById : OrderItemId -> Order -> Maybe BaseOrderItem
