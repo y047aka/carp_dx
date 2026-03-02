@@ -199,7 +199,7 @@ drinkHighBall : MenuItem
 drinkHighBall =
     { id = "drink-highball"
     , name = "角ハイボール"
-    , price = 600
+    , price = 700
     , category = Drink
     }
 

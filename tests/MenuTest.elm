@@ -36,7 +36,7 @@ suite =
             , testMenuItem "ノンアルコールビール" 650 drinkNonAlcoholicBeer
             , testMenuItem "島レモン" 700 drinkLemonBottole
             , testMenuItem "レモンサワー" 600 drinkLemonCan
-            , testMenuItem "角ハイボール" 600 drinkHighBall
+            , testMenuItem "角ハイボール" 700 drinkHighBall
             , testMenuItem "ウーロンハイ" 600 drinkOolongHigh
             , testMenuItem "日本酒" 600 drinkSake
             , testMenuItem "ウーロン茶" 300 drinkOolongTea
