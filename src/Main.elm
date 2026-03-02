@@ -244,7 +244,7 @@ menuItemCard order item =
             if item.category == Menu.Base then
                 case MenuData.menuItemToBaseKind item of
                     Just kind ->
-                        "¥" ++ String.fromInt (Okonomiyaki.calculateTotal (Okonomiyaki.init kind))
+                        "¥" ++ String.fromInt (Okonomiyaki.calculateTotal (Okonomiyaki.init kind)) ++ "〜"
 
                     Nothing ->
                         "¥?"
@@ -258,8 +258,45 @@ menuItemCard order item =
                 [ class "flex items-center justify-between w-full py-3 text-left hover:bg-base-200/50 active:bg-base-200"
                 , onClick (AddMenuItem item)
                 ]
+                [ div [ class "flex-1" ]
                     [ div [ class "text-lg font-bold" ] [ text item.name ]
-                , div [ class "text-base text-primary" ] [ text priceText ]
+                    , case MenuData.menuItemToBaseKind item of
+                        Just kind ->
+                            let
+                                defaultOkonomiyaki =
+                                    Okonomiyaki.init kind
+
+                                noodleBadgesList =
+                                    Okonomiyaki.noodleBadges defaultOkonomiyaki.noodleSelection
+
+                                toppingBadgesList =
+                                    Okonomiyaki.toppingBadges defaultOkonomiyaki
+                            in
+                            if List.isEmpty noodleBadgesList && List.isEmpty toppingBadgesList then
+                                text ""
+
+                            else
+                                div [ class "flex flex-wrap gap-1 mt-1" ]
+                                    (List.concat
+                                        [ noodleBadgesList
+                                            |> List.map
+                                                (\badge ->
+                                                    span [ class "badge badge-ghost badge-sm" ]
+                                                        [ text (badge.name ++ " " ++ badge.quantityDisplay ++ "玉") ]
+                                                )
+                                        , toppingBadgesList
+                                            |> List.map
+                                                (\badge ->
+                                                    span [ class "badge badge-ghost badge-sm" ]
+                                                        [ text badge.name ]
+                                                )
+                                        ]
+                                    )
+
+                        Nothing ->
+                            text ""
+                    ]
+                , div [ class "text-base text-primary flex-shrink-0 ml-2" ] [ text priceText ]
                 ]
 
         _ ->
@@ -504,7 +541,7 @@ editBaseModalContent isNew okonomiyaki =
                     [ h2 [ class "font-bold text-2xl" ]
                         [ text (Okonomiyaki.baseName okonomiyaki) ]
                     , button
-                        [ class "btn btn-ghost btn-sm"
+                        [ class "btn btn-ghost"
                         , onClick CancelEditModal
                         ]
                         [ text "キャンセル" ]
@@ -546,7 +583,7 @@ editBaseModalContent isNew okonomiyaki =
                 -- トッピングセクション
                 , div []
                     [ h3 [ class "text-lg font-bold mb-3" ] [ text "トッピング" ]
-                    , div [ class "divide-y divide-base-300" ]
+                    , div [ class "grid grid-cols-2 gap-3" ]
                         (Okonomiyaki.allToppings
                             |> List.map (toppingMenuItem okonomiyaki.toppings)
                         )
@@ -612,14 +649,17 @@ noodleSelectionView okonomiyaki =
             , option [ value "champon", selected (currentKind == Champon) ] [ text "ちゃんぽん" ]
             ]
 
-        -- 数量コントロール（麺が選択されている場合のみ表示）
-        , if hasNoodle then
-            div [ class "flex items-center justify-between py-2 px-2 bg-base-200 rounded-lg" ]
+        -- 数量コントロール（麺なし時はグレーアウト）
+        , div
+            [ class "flex items-center justify-between py-2 px-2 bg-base-200 rounded-lg"
+            , classList [ ( "opacity-40 pointer-events-none", not hasNoodle ) ]
+            ]
             [ div [ class "text-base font-bold" ]
                 [ text "数量" ]
             , div [ class "flex items-center gap-2" ]
                 [ button
                     [ class "btn btn-xs btn-circle btn-outline"
+                    , disabled (not hasNoodle)
                     , onClick (EditModalMsg Okonomiyaki.DecrementNoodleQuantity)
                     ]
                     [ text "−" ]
@@ -627,14 +667,12 @@ noodleSelectionView okonomiyaki =
                     [ text (Okonomiyaki.noodleSelectionDisplay currentSelection ++ "玉") ]
                 , button
                     [ class "btn btn-xs btn-circle btn-primary"
+                    , disabled (not hasNoodle)
                     , onClick (EditModalMsg Okonomiyaki.IncrementNoodleQuantity)
                     ]
                     [ text "+" ]
                 ]
             ]
-
-          else
-            text ""
         ]
 
 
@@ -646,12 +684,12 @@ toppingMenuItem currentToppings item =
                 |> List.any (\t -> t.topping.kind == item.kind)
     in
     div
-        [ class "flex items-center justify-between py-2 cursor-pointer hover:bg-base-200/50"
-        , classList [ ( "text-success", isSelected ) ]
+        [ class "p-3 border border-base-300 rounded-lg flex items-center justify-between cursor-pointer hover:bg-base-200/50"
+        , classList [ ( "border-success bg-success/10", isSelected ) ]
         , onClick (EditModalMsg (Okonomiyaki.ToggleTopping item))
         ]
         [ div [ class "flex-1" ]
-            [ div [ class "text-lg font-bold" ] [ text item.name ]
+            [ div [ class "text-base font-bold" ] [ text item.name ]
             , div [ class "text-sm text-base-content/60" ]
                 [ text ("¥" ++ String.fromInt item.price) ]
             ]
