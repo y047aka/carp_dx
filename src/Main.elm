@@ -1,12 +1,13 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, button, div, h1, h2, h3, input, option, select, span, text)
-import Html.Attributes exposing (checked, class, classList, disabled, selected, type_, value)
-import Html.Events exposing (onClick, onInput)
+import Html exposing (Html, button, div, h1, h2, span, text)
+import Html.Attributes exposing (class, classList, disabled)
+import Html.Events exposing (onClick)
 import Menu exposing (MenuCategory, MenuItem)
 import MenuData
-import Okonomiyaki exposing (NoodleKind(..), NoodleSelection(..), Okonomiyaki, Topping, ToppingAddition, toNoodleKind)
+import Modal
+import Okonomiyaki exposing (NoodleSelection(..), Okonomiyaki)
 import Order exposing (BaseOrderItem, Order, OrderItem, OrderItemContent(..), OrderItemId, StandaloneOrderItem)
 
 
@@ -19,19 +20,12 @@ main =
         }
 
 
-type EditModalState
-    = NotEditing
-    | AddingNew Okonomiyaki
-    | Editing OrderItemId Okonomiyaki
-    | SelectingStandaloneItem MenuItem Int (Maybe OrderItemId)
-
-
 type alias Model =
     { currentOrder : Order
     , selectedCategory : MenuCategory
     , showCheckoutModal : Bool
     , orderSummaryExpanded : Bool
-    , editModalState : EditModalState
+    , editModalState : Modal.State
     }
 
 
@@ -41,24 +35,20 @@ init =
     , selectedCategory = Menu.Base
     , showCheckoutModal = False
     , orderSummaryExpanded = False
-    , editModalState = NotEditing
+    , editModalState = Modal.init
     }
 
 
 type Msg
     = SelectCategory MenuCategory
     | AddMenuItem MenuItem
-    | EditModalMsg Okonomiyaki.Msg
-    | ConfirmEditModal
-    | CancelEditModal
+    | ModalMsg Modal.Msg
     | OrderMsg Order.Msg
     | ShowCheckout
     | CloseCheckout
     | ResetOrder
     | OpenEditModal OrderItemId
     | OpenStandaloneModal MenuItem
-    | StandaloneModalIncrement
-    | StandaloneModalDecrement
     | ToggleOrderSummary
 
 
@@ -73,7 +63,7 @@ update msg model =
                 Menu.Base ->
                     case MenuData.menuItemToBaseKind menuItem of
                         Just kind ->
-                            { model | editModalState = AddingNew (Okonomiyaki.init kind) }
+                            { model | editModalState = Modal.AddingNew (Okonomiyaki.init kind) }
 
                         Nothing ->
                             model
@@ -81,54 +71,20 @@ update msg model =
                 _ ->
                     model
 
-        EditModalMsg okonomiyakiMsg ->
-            case model.editModalState of
-                AddingNew okonomiyaki ->
-                    { model | editModalState = AddingNew (Okonomiyaki.update okonomiyakiMsg okonomiyaki) }
+        ModalMsg modalMsg ->
+            let
+                result =
+                    Modal.update modalMsg model.editModalState
 
-                Editing itemId okonomiyaki ->
-                    { model | editModalState = Editing itemId (Okonomiyaki.update okonomiyakiMsg okonomiyaki) }
+                newOrder =
+                    case result.orderEffect of
+                        Just orderMsg ->
+                            Order.update orderMsg model.currentOrder
 
-                NotEditing ->
-                    model
-
-                SelectingStandaloneItem _ _ _ ->
-                    model
-
-        ConfirmEditModal ->
-            case model.editModalState of
-                AddingNew okonomiyaki ->
-                    { model
-                        | currentOrder = Order.update (Order.AddBaseOrderItem { okonomiyaki = okonomiyaki, quantity = 1 }) model.currentOrder
-                        , editModalState = NotEditing
-                    }
-
-                Editing itemId okonomiyaki ->
-                    { model
-                        | currentOrder = Order.update (Order.UpdateOkonomiyaki itemId okonomiyaki) model.currentOrder
-                        , editModalState = NotEditing
-                    }
-
-                SelectingStandaloneItem menuItem qty maybeId ->
-                    let
-                        updatedOrder =
-                            case ( maybeId, qty ) of
-                                ( Just existingId, _ ) ->
-                                    Order.update (Order.SetStandaloneQuantity existingId qty) model.currentOrder
-
-                                ( Nothing, 0 ) ->
-                                    model.currentOrder
-
-                                ( Nothing, _ ) ->
-                                    Order.update (Order.AddStandaloneItemWithQuantity menuItem qty) model.currentOrder
-                    in
-                    { model | currentOrder = updatedOrder, editModalState = NotEditing }
-
-                NotEditing ->
-                    model
-
-        CancelEditModal ->
-            { model | editModalState = NotEditing }
+                        Nothing ->
+                            model.currentOrder
+            in
+            { model | editModalState = result.state, currentOrder = newOrder }
 
         OrderMsg orderMsg ->
             { model | currentOrder = Order.update orderMsg model.currentOrder }
@@ -143,13 +99,13 @@ update msg model =
             { model
                 | currentOrder = Order.emptyOrder
                 , showCheckoutModal = False
-                , editModalState = NotEditing
+                , editModalState = Modal.init
             }
 
         OpenEditModal itemId ->
             case getBaseItemById itemId model.currentOrder of
                 Just baseOrderItem ->
-                    { model | editModalState = Editing itemId baseOrderItem.okonomiyaki }
+                    { model | editModalState = Modal.Editing itemId baseOrderItem.okonomiyaki }
 
                 Nothing ->
                     model
@@ -175,26 +131,10 @@ update msg model =
             in
             case existingItem of
                 Just ( existingId, existingQty ) ->
-                    { model | editModalState = SelectingStandaloneItem menuItem existingQty (Just existingId) }
+                    { model | editModalState = Modal.SelectingStandaloneItem menuItem existingQty (Just existingId) }
 
                 Nothing ->
-                    { model | editModalState = SelectingStandaloneItem menuItem 1 Nothing }
-
-        StandaloneModalIncrement ->
-            case model.editModalState of
-                SelectingStandaloneItem menuItem qty maybeId ->
-                    { model | editModalState = SelectingStandaloneItem menuItem (qty + 1) maybeId }
-
-                _ ->
-                    model
-
-        StandaloneModalDecrement ->
-            case model.editModalState of
-                SelectingStandaloneItem menuItem qty maybeId ->
-                    { model | editModalState = SelectingStandaloneItem menuItem (max 0 (qty - 1)) maybeId }
-
-                _ ->
-                    model
+                    { model | editModalState = Modal.SelectingStandaloneItem menuItem 1 Nothing }
 
         ToggleOrderSummary ->
             { model | orderSummaryExpanded = not model.orderSummaryExpanded }
@@ -252,18 +192,7 @@ view model =
             text ""
 
         -- 編集モーダル
-        , case model.editModalState of
-            NotEditing ->
-                text ""
-
-            AddingNew okonomiyaki ->
-                editBaseModalContent True okonomiyaki
-
-            Editing _ okonomiyaki ->
-                editBaseModalContent False okonomiyaki
-
-            SelectingStandaloneItem menuItem qty maybeId ->
-                standaloneItemModal menuItem qty maybeId
+        , Html.map ModalMsg (Modal.view model.editModalState)
         ]
 
 
@@ -558,249 +487,6 @@ standaloneOrderView itemId item =
         , div [ class "text-lg font-bold text-right w-24" ]
             [ text ("¥" ++ String.fromInt (item.menuItem.price * item.quantity))
             ]
-        ]
-
-
-editBaseModalContent : Bool -> Okonomiyaki -> Html Msg
-editBaseModalContent isNew okonomiyaki =
-    let
-        totalPrice =
-            Okonomiyaki.calculateTotal okonomiyaki
-    in
-    div [ class "modal modal-open" ]
-        [ div [ class "modal-box max-w-lg max-h-[90vh] flex flex-col p-0" ]
-            [ -- 固定ヘッダー（商品名とカスタマイズ内容）
-              div [ class "flex-shrink-0 border-b border-base-300 p-6" ]
-                [ div [ class "flex items-start justify-between mb-4" ]
-                    [ h2 [ class "font-bold text-2xl" ]
-                        [ text (Okonomiyaki.baseName okonomiyaki) ]
-                    , button
-                        [ class "btn btn-ghost"
-                        , onClick CancelEditModal
-                        ]
-                        [ text "キャンセル" ]
-                    ]
-
-                -- 麺・トッピング（badge表示）
-                , if okonomiyaki.noodleSelection == WithoutNoodle && List.isEmpty okonomiyaki.toppings then
-                    text ""
-
-                  else
-                    div [ class "flex flex-wrap gap-1.5" ]
-                        (List.concat
-                            [ Okonomiyaki.noodleBadges okonomiyaki.noodleSelection
-                                |> List.map
-                                    (\badge ->
-                                        span [ class "badge badge-ghost badge-sm" ]
-                                            [ text (badge.name ++ " (" ++ badge.quantityDisplay ++ "玉)") ]
-                                    )
-                            , Okonomiyaki.toppingBadges okonomiyaki
-                                |> List.map
-                                    (\badge ->
-                                        span [ class "badge badge-ghost badge-sm" ]
-                                            [ text badge.name ]
-                                    )
-                            ]
-                        )
-                ]
-
-            -- スクロール可能なコンテンツエリア
-            , div [ class "flex-1 overflow-y-auto p-6" ]
-                [ -- 麺セクション
-                  div [ class "mb-2" ]
-                    [ h3 [ class "text-lg font-bold mb-3" ] [ text "麺" ]
-                    , noodleSelectionView okonomiyaki
-                    ]
-
-                , div [ class "divider my-2" ] []
-
-                -- トッピングセクション
-                , div []
-                    [ h3 [ class "text-lg font-bold mb-3" ] [ text "トッピング" ]
-                    , div [ class "grid grid-cols-2 gap-3" ]
-                        (Okonomiyaki.allToppings
-                            |> List.map (toppingMenuItem okonomiyaki.toppings)
-                        )
-                    ]
-                ]
-
-            -- 固定フッター（確定ボタンのみ）
-            , div [ class "flex-shrink-0 border-t border-base-300 p-4" ]
-                [ button
-                    [ class "btn btn-primary btn-block btn-lg rounded-full"
-                    , onClick ConfirmEditModal
-                    ]
-                    [ text
-                        (if isNew then
-                            "追加する（¥" ++ String.fromInt totalPrice ++ "）"
-
-                         else
-                            "完了（¥" ++ String.fromInt totalPrice ++ "）"
-                        )
-                    ]
-                ]
-            ]
-        ]
-
-
-standaloneItemModal : MenuItem -> Int -> Maybe OrderItemId -> Html Msg
-standaloneItemModal menuItem qty maybeId =
-    div [ class "modal modal-open" ]
-        [ div [ class "modal-box max-w-sm flex flex-col p-0" ]
-            [ -- 固定ヘッダー（アイテム名 + キャンセルボタン）
-              div [ class "flex-shrink-0 border-b border-base-300 p-6" ]
-                [ div [ class "flex items-start justify-between" ]
-                    [ div []
-                        [ h2 [ class "font-bold text-2xl" ] [ text menuItem.name ]
-                        , div [ class "text-sm text-base-content/70 mt-1" ]
-                            [ text ("¥" ++ String.fromInt menuItem.price) ]
-                        ]
-                    , button
-                        [ class "btn btn-ghost"
-                        , onClick CancelEditModal
-                        ]
-                        [ text "キャンセル" ]
-                    ]
-                ]
-
-            -- 数量選択エリア
-            , div [ class "flex-1 p-6" ]
-                [ div [ class "flex items-center justify-center gap-8 py-4" ]
-                    [ button
-                        [ class "btn btn-circle btn-outline btn-lg"
-                        , disabled (qty <= 0)
-                        , onClick StandaloneModalDecrement
-                        ]
-                        [ text "−" ]
-                    , span [ class "text-4xl font-bold w-16 text-center" ]
-                        [ text (String.fromInt qty) ]
-                    , button
-                        [ class "btn btn-circle btn-primary btn-lg"
-                        , onClick StandaloneModalIncrement
-                        ]
-                        [ text "+" ]
-                    ]
-                ]
-
-            -- 固定フッター（確定ボタン）
-            , div [ class "flex-shrink-0 border-t border-base-300 p-4" ]
-                [ if qty == 0 then
-                    case maybeId of
-                        Just _ ->
-                            button
-                                [ class "btn btn-error btn-block btn-lg rounded-full"
-                                , onClick ConfirmEditModal
-                                ]
-                                [ text "削除する" ]
-
-                        Nothing ->
-                            button
-                                [ class "btn btn-ghost btn-block btn-lg rounded-full"
-                                , disabled True
-                                ]
-                                [ text "数量を選択してください" ]
-
-                  else
-                    button
-                        [ class "btn btn-primary btn-block btn-lg rounded-full"
-                        , onClick ConfirmEditModal
-                        ]
-                        [ text ("注文する（¥" ++ String.fromInt (menuItem.price * qty) ++ "）") ]
-                ]
-            ]
-        ]
-
-
-noodleKindFromString : String -> NoodleKind
-noodleKindFromString s =
-    case s of
-        "soba" ->
-            Soba
-
-        "udon" ->
-            Udon
-
-        "champon" ->
-            Champon
-
-        _ ->
-            NoNoodle
-
-
-noodleSelectionView : Okonomiyaki -> Html Msg
-noodleSelectionView okonomiyaki =
-    let
-        currentSelection =
-            okonomiyaki.noodleSelection
-
-        currentKind =
-            toNoodleKind currentSelection
-
-        hasNoodle =
-            currentKind /= NoNoodle
-    in
-    div []
-        [ -- 麺の種類選択（selectbox）
-          select
-            [ class "select select-lg w-full mb-3"
-            , onInput (\s -> EditModalMsg (Okonomiyaki.SelectNoodleKind (noodleKindFromString s)))
-            ]
-            [ option [ value "none", selected (currentKind == NoNoodle) ] [ text "なし" ]
-            , option [ value "soba", selected (currentKind == Soba) ] [ text "そば" ]
-            , option [ value "udon", selected (currentKind == Udon) ] [ text "うどん" ]
-            , option [ value "champon", selected (currentKind == Champon) ] [ text "ちゃんぽん" ]
-            ]
-
-        -- 数量コントロール（麺なし時はグレーアウト）
-        , div
-            [ class "flex items-center justify-between py-2 px-2 bg-base-200 rounded-lg"
-            , classList [ ( "opacity-40 pointer-events-none", not hasNoodle ) ]
-            ]
-            [ div [ class "text-base font-bold" ]
-                [ text "数量" ]
-            , div [ class "flex items-center gap-2" ]
-                [ button
-                    [ class "btn btn-xs btn-circle btn-outline"
-                    , disabled (not hasNoodle)
-                    , onClick (EditModalMsg Okonomiyaki.DecrementNoodleQuantity)
-                    ]
-                    [ text "−" ]
-                , span [ class "text-lg font-bold w-12 text-center" ]
-                    [ text (Okonomiyaki.noodleSelectionDisplay currentSelection ++ "玉") ]
-                , button
-                    [ class "btn btn-xs btn-circle btn-primary"
-                    , disabled (not hasNoodle)
-                    , onClick (EditModalMsg Okonomiyaki.IncrementNoodleQuantity)
-                    ]
-                    [ text "+" ]
-                ]
-            ]
-        ]
-
-
-toppingMenuItem : List ToppingAddition -> Topping -> Html Msg
-toppingMenuItem currentToppings item =
-    let
-        isSelected =
-            currentToppings
-                |> List.any (\t -> t.topping.kind == item.kind)
-    in
-    div
-        [ class "p-3 border border-base-300 rounded-lg flex items-center justify-between cursor-pointer hover:bg-base-200/50"
-        , classList [ ( "border-success bg-success/10", isSelected ) ]
-        , onClick (EditModalMsg (Okonomiyaki.ToggleTopping item))
-        ]
-        [ div [ class "flex-1" ]
-            [ div [ class "text-base font-bold" ] [ text item.name ]
-            , div [ class "text-sm text-base-content/60" ]
-                [ text ("¥" ++ String.fromInt item.price) ]
-            ]
-        , input
-            [ type_ "checkbox"
-            , class "checkbox checkbox-success pointer-events-none"
-            , checked isSelected
-            ]
-            []
         ]
 
 
