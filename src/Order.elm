@@ -53,22 +53,34 @@ emptyOrder =
 
 -- Order に対する操作メッセージ
 type Msg
-    = AddOkonomiyaki Okonomiyaki.BaseKind
+    = AddBaseOrderItem BaseOrderItem
+    | UpdateOkonomiyaki OrderItemId Okonomiyaki
     | AddStandaloneItem MenuItem
     | IncrementQuantity OrderItemId
     | DecrementQuantity OrderItemId
-    | EditOkonomiyaki OrderItemId Okonomiyaki.Msg
 
 
 -- Order を更新する
 update : Msg -> Order -> Order
 update msg order =
     case msg of
-        AddOkonomiyaki kind ->
+        AddBaseOrderItem baseOrderItem ->
             { order
-                | items = order.items ++ [ { id = order.nextId, content = BaseOrder { okonomiyaki = Okonomiyaki.init kind, quantity = 1 } } ]
+                | items = order.items ++ [ { id = order.nextId, content = BaseOrder baseOrderItem } ]
                 , nextId = order.nextId + 1
             }
+
+        UpdateOkonomiyaki targetId newOkonomiyaki ->
+            mapItemById targetId
+                (\content ->
+                    case content of
+                        BaseOrder baseOrderItem ->
+                            BaseOrder { baseOrderItem | okonomiyaki = newOkonomiyaki }
+
+                        StandaloneOrder _ ->
+                            content
+                )
+                order
 
         AddStandaloneItem menuItem ->
             let
@@ -143,19 +155,6 @@ update msg order =
                                 Just (StandaloneOrder { standaloneItem | quantity = newQuantity })
                 )
                 order
-
-        EditOkonomiyaki targetId okonomiyakiMsg ->
-            mapItemById targetId
-                (\content ->
-                    case content of
-                        BaseOrder baseOrderItem ->
-                            BaseOrder { baseOrderItem | okonomiyaki = Okonomiyaki.update okonomiyakiMsg baseOrderItem.okonomiyaki }
-
-                        _ ->
-                            content
-                )
-                order
-
 
 -- IDで該当アイテムのcontentを変換する
 mapItemById : OrderItemId -> (OrderItemContent -> OrderItemContent) -> Order -> Order

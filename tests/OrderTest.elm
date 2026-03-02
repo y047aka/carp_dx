@@ -19,7 +19,7 @@ suite =
             , test "お好み焼き1つの注文" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.YasaiIri)
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = Okonomiyaki.init Okonomiyaki.YasaiIri, quantity = 1 })
                         |> Order.calculateTotal
                         |> Expect.equal 900
             , test "独立商品（焼き物）1つの注文" <|
@@ -37,26 +37,38 @@ suite =
                         |> Expect.equal 1500
             , test "お好み焼き + 麺の注文" <|
                 \_ ->
+                    let
+                        okonomiyaki =
+                            Okonomiyaki.init Okonomiyaki.YasaiIri
+                                |> Okonomiyaki.update (Okonomiyaki.SelectNoodleKind Okonomiyaki.Soba)
+                    in
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.YasaiIri)
-                        |> Order.update (Order.EditOkonomiyaki 0 (Okonomiyaki.SelectNoodleKind Okonomiyaki.Soba))
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = okonomiyaki, quantity = 1 })
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×2)（1玉） = 1200
                         |> Expect.equal 1200
             , test "お好み焼き + トッピングの注文" <|
                 \_ ->
+                    let
+                        okonomiyaki =
+                            Okonomiyaki.init Okonomiyaki.YasaiIri
+                                |> Okonomiyaki.update (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten)
+                    in
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.YasaiIri)
-                        |> Order.update (Order.EditOkonomiyaki 0 (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten))
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = okonomiyaki, quantity = 1 })
                         |> Order.calculateTotal
                         |> Expect.equal 1100
             , test "複雑な注文の合計" <|
                 \_ ->
+                    let
+                        okonomiyaki =
+                            Okonomiyaki.init Okonomiyaki.YasaiIri
+                                |> Okonomiyaki.update (Okonomiyaki.SelectNoodleKind Okonomiyaki.Soba)
+                                |> Okonomiyaki.update (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten)
+                                |> Okonomiyaki.update (Okonomiyaki.ToggleTopping Okonomiyaki.toppingNegi)
+                    in
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.YasaiIri)
-                        |> Order.update (Order.EditOkonomiyaki 0 (Okonomiyaki.SelectNoodleKind Okonomiyaki.Soba))
-                        |> Order.update (Order.EditOkonomiyaki 0 (Okonomiyaki.ToggleTopping Okonomiyaki.toppingIkaten))
-                        |> Order.update (Order.EditOkonomiyaki 0 (Okonomiyaki.ToggleTopping Okonomiyaki.toppingNegi))
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = okonomiyaki, quantity = 1 })
                         |> Order.update (Order.AddStandaloneItem MenuData.grilledKaki)
                         |> Order.update (Order.AddStandaloneItem MenuData.drinkBeer)
                         |> Order.calculateTotal
@@ -67,9 +79,13 @@ suite =
                         |> Expect.equal 3900
             , test "お好み焼き複数個 + 独立商品の注文" <|
                 \_ ->
+                    let
+                        okonomiyaki =
+                            Okonomiyaki.init Okonomiyaki.YasaiIri
+                                |> Okonomiyaki.update (Okonomiyaki.SelectNoodleKind Okonomiyaki.Soba)
+                    in
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.YasaiIri)
-                        |> Order.update (Order.EditOkonomiyaki 0 (Okonomiyaki.SelectNoodleKind Okonomiyaki.Soba))
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = okonomiyaki, quantity = 1 })
                         |> Order.update (Order.IncrementQuantity 0)
                         |> Order.update (Order.AddStandaloneItem MenuData.drinkBeer)
                         |> Order.calculateTotal
@@ -82,7 +98,7 @@ suite =
             [ test "お好み焼きを追加する" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.YasaiIri)
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = Okonomiyaki.init Okonomiyaki.YasaiIri, quantity = 1 })
                         |> .items
                         |> List.length
                         |> Expect.equal 1
@@ -105,7 +121,7 @@ suite =
             , test "お好み焼きの数量を増やす" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.YasaiIri)
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = Okonomiyaki.init Okonomiyaki.YasaiIri, quantity = 1 })
                         |> Order.update (Order.IncrementQuantity 0)
                         |> .items
                         |> List.head
@@ -114,7 +130,7 @@ suite =
             , test "お好み焼きの数量を減らす" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.YasaiIri)
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = Okonomiyaki.init Okonomiyaki.YasaiIri, quantity = 1 })
                         |> Order.update (Order.IncrementQuantity 0)
                         |> Order.update (Order.DecrementQuantity 0)
                         |> .items
@@ -124,7 +140,7 @@ suite =
             , test "お好み焼きの数量を1から減らすと削除される" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.YasaiIri)
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = Okonomiyaki.init Okonomiyaki.YasaiIri, quantity = 1 })
                         |> Order.update (Order.DecrementQuantity 0)
                         |> .items
                         |> List.length
@@ -134,14 +150,14 @@ suite =
             [ test "そば入り単体は1200円" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.SobaIri)
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = Okonomiyaki.init Okonomiyaki.SobaIri, quantity = 1 })
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×2)（そば1玉）= 1200
                         |> Expect.equal 1200
             , test "うどん入り単体は1200円" <|
                 \_ ->
                     Order.emptyOrder
-                        |> Order.update (Order.AddOkonomiyaki Okonomiyaki.UdonIri)
+                        |> Order.update (Order.AddBaseOrderItem { okonomiyaki = Okonomiyaki.init Okonomiyaki.UdonIri, quantity = 1 })
                         |> Order.calculateTotal
                         -- 900 + (100 + 100×2)（うどん1玉）= 1200
                         |> Expect.equal 1200
