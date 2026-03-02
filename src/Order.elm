@@ -56,6 +56,8 @@ type Msg
     = AddBaseOrderItem BaseOrderItem
     | UpdateOkonomiyaki OrderItemId Okonomiyaki
     | AddStandaloneItem MenuItem
+    | AddStandaloneItemWithQuantity MenuItem Int
+    | SetStandaloneQuantity OrderItemId Int
     | IncrementQuantity OrderItemId
     | DecrementQuantity OrderItemId
 
@@ -115,6 +117,56 @@ update msg order =
                         | items = order.items ++ [ { id = order.nextId, content = StandaloneOrder { menuItem = menuItem, quantity = 1 } } ]
                         , nextId = order.nextId + 1
                     }
+
+        AddStandaloneItemWithQuantity menuItem quantity ->
+            let
+                existingItem =
+                    order.items
+                        |> List.filter
+                            (\item ->
+                                case item.content of
+                                    StandaloneOrder standaloneItem ->
+                                        standaloneItem.menuItem.id == menuItem.id
+
+                                    _ ->
+                                        False
+                            )
+                        |> List.head
+            in
+            case existingItem of
+                Just existing ->
+                    mapItemById existing.id
+                        (\content ->
+                            case content of
+                                StandaloneOrder standaloneItem ->
+                                    StandaloneOrder { standaloneItem | quantity = quantity }
+
+                                _ ->
+                                    content
+                        )
+                        order
+
+                Nothing ->
+                    { order
+                        | items = order.items ++ [ { id = order.nextId, content = StandaloneOrder { menuItem = menuItem, quantity = quantity } } ]
+                        , nextId = order.nextId + 1
+                    }
+
+        SetStandaloneQuantity targetId newQuantity ->
+            filterMapItemById targetId
+                (\content ->
+                    case content of
+                        StandaloneOrder standaloneItem ->
+                            if newQuantity <= 0 then
+                                Nothing
+
+                            else
+                                Just (StandaloneOrder { standaloneItem | quantity = newQuantity })
+
+                        BaseOrder _ ->
+                            Just content
+                )
+                order
 
         IncrementQuantity targetId ->
             mapItemById targetId
