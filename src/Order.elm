@@ -67,10 +67,38 @@ update : Msg -> Order -> Order
 update msg order =
     case msg of
         AddBaseOrderItem baseOrderItem ->
-            { order
-                | items = order.items ++ [ { id = order.nextId, content = BaseOrder baseOrderItem } ]
-                , nextId = order.nextId + 1
-            }
+            let
+                existingItem =
+                    order.items
+                        |> List.filter
+                            (\item ->
+                                case item.content of
+                                    BaseOrder existing ->
+                                        existing.okonomiyaki == baseOrderItem.okonomiyaki
+
+                                    _ ->
+                                        False
+                            )
+                        |> List.head
+            in
+            case existingItem of
+                Just existing ->
+                    mapItemById existing.id
+                        (\content ->
+                            case content of
+                                BaseOrder existing_ ->
+                                    BaseOrder { existing_ | quantity = existing_.quantity + baseOrderItem.quantity }
+
+                                _ ->
+                                    content
+                        )
+                        order
+
+                Nothing ->
+                    { order
+                        | items = order.items ++ [ { id = order.nextId, content = BaseOrder baseOrderItem } ]
+                        , nextId = order.nextId + 1
+                    }
 
         UpdateOkonomiyaki targetId newOkonomiyaki ->
             mapItemById targetId
