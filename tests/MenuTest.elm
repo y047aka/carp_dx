@@ -33,7 +33,7 @@ suite =
             ]
         , describe "飲み物"
             [ testMenuItem "ビール（瓶）" 750 drinkBeer
-            , testMenuItem "ノンアルコールビール" 650 drinkNonAlcoholicBeer
+            , testMenuItem "ノンアルコールビール" 600 drinkNonAlcoholicBeer
             , testMenuItem "島レモン" 700 drinkLemonBottole
             , testMenuItem "レモンサワー" 600 drinkLemonCan
             , testMenuItem "角ハイボール" 700 drinkHighBall

@@ -172,7 +172,7 @@ drinkNonAlcoholicBeer : MenuItem
 drinkNonAlcoholicBeer =
     { id = "drink-non-alcoholic-beer"
     , name = "ノンアルコールビール"
-    , price = 650
+    , price = 600
     , category = Drink
     }
 
