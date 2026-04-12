@@ -11,9 +11,9 @@ suite : Test
 suite =
     describe "Menu"
         [ describe "お好み焼き（ベース）"
-            [ testMenuItem "野菜入り" 900 baseYasai
-            , testMenuItem "そば入り" 1200 baseSoba
-            , testMenuItem "うどん入り" 1200 baseUdon
+            [ testMenuItem "野菜入り" 950 baseYasai
+            , testMenuItem "そば入り" 1250 baseSoba
+            , testMenuItem "うどん入り" 1250 baseUdon
             ]
         , describe "トッピング"
             [ testTopping "イカ天" 200 Okonomiyaki.toppingIkaten
@@ -21,13 +21,13 @@ suite =
             , testTopping "ねぎかけ" 250 Okonomiyaki.toppingNegi
             , testTopping "ニンニク" 250 Okonomiyaki.toppingGarlic
             , testTopping "チーズ" 300 Okonomiyaki.toppingCheese
-            , testTopping "イカ" 400 Okonomiyaki.toppingSquid
-            , testTopping "エビ" 400 Okonomiyaki.toppingShrimp
+            , testTopping "イカ" 450 Okonomiyaki.toppingSquid
+            , testTopping "エビ" 450 Okonomiyaki.toppingShrimp
             ]
         , describe "焼き物"
             [ testMenuItem "カキ焼き" 1500 grilledKaki
             , testMenuItem "ホタテ焼き" 1000 grilledHotate
-            , testMenuItem "イカ焼き" 900 grilledIka
+            , testMenuItem "イカ焼き" 950 grilledIka
             , testMenuItem "ネギ焼き" 1000 grilledNegiYaki
             , testMenuItem "とん平" 1000 grilledTonpei
             ]
@@ -38,7 +38,7 @@ suite =
             , testMenuItem "レモンサワー" 600 drinkLemonCan
             , testMenuItem "角ハイボール" 700 drinkHighBall
             , testMenuItem "ウーロンハイ" 600 drinkOolongHigh
-            , testMenuItem "日本酒" 600 drinkSake
+            , testMenuItem "日本酒" 650 drinkSake
             , testMenuItem "ウーロン茶" 300 drinkOolongTea
             , testMenuItem "コーラ" 300 drinkCoke
             ]

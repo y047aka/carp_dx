@@ -262,12 +262,12 @@ toppingCheese =
 
 toppingSquid : Topping
 toppingSquid =
-    { kind = ToppingKindSquid, name = "イカ", price = 400 }
+    { kind = ToppingKindSquid, name = "イカ", price = 450 }
 
 
 toppingShrimp : Topping
 toppingShrimp =
-    { kind = ToppingKindShrimp, name = "エビ", price = 400 }
+    { kind = ToppingKindShrimp, name = "エビ", price = 450 }
 
 
 {-| 全トッピング一覧。UI のトッピング選択画面に使用する。 -}
@@ -614,7 +614,7 @@ toppingBadges okonomiyaki =
 {-| お好み焼き本体の基本料金（麺・トッピング抜き）。 -}
 baseOkonomiyakiPrice : Int
 baseOkonomiyakiPrice =
-    900
+    950
 
 
 {-| 麺料金を計算する。麺なしの場合は 0 を返す。 -}
@@ -634,7 +634,7 @@ noodlePrice okonomiyaki =
 
 {-| お好み焼き1枚あたりの金額を計算する。
 
-計算式：`基本料金（900円） + 麺料金 + トッピング料金 - 割引`
+計算式：`基本料金（950円） + 麺料金 + トッピング料金 - 割引`
 
 **麺の料金ルール：**
 
@@ -645,7 +645,7 @@ noodlePrice okonomiyaki =
 
 **割引ルール：**
 
-  - 全部入り（ZenbuIri）の場合、300円割引を適用する。
+  - 全部入り（ZenbuIri）の場合、400円割引を適用する。
 
 -}
 calculateTotal : Okonomiyaki -> Int
@@ -658,7 +658,7 @@ calculateTotal okonomiyaki =
 
         zenbuIriDiscount =
             if baseKind okonomiyaki == ZenbuIri then
-                300
+                400
 
             else
                 0

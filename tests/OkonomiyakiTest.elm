@@ -226,83 +226,83 @@ suite =
             ]
         , describe "calculateTotal"
             [ describe "麺なし"
-                [ test "麺なし = 900円" <|
+                [ test "麺なし = 950円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithoutNoodle, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 900
+                            |> Expect.equal 950
                 ]
-            , describe "麺あり: 900 + 入場料(100) + 半玉単価(100)×半玉数"
-                [ test "そば0.5玉（HalfBall）: 900 + (100 + 100×1) = 1100円" <|
+            , describe "麺あり: 950 + 入場料(100) + 半玉単価(100)×半玉数"
+                [ test "そば0.5玉（HalfBall）: 950 + (100 + 100×1) = 1150円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithSoba Okonomiyaki.HalfBall, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1100
-                , test "そば1玉（Whole 1）: 900 + (100 + 100×2) = 1200円" <|
+                            |> Expect.equal 1150
+                , test "そば1玉（Whole 1）: 950 + (100 + 100×2) = 1250円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1), toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1200
-                , test "そば1.5玉（WholeAndHalf 1）: 900 + (100 + 100×3) = 1300円" <|
+                            |> Expect.equal 1250
+                , test "そば1.5玉（WholeAndHalf 1）: 950 + (100 + 100×3) = 1350円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.WholeAndHalf 1), toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1300
-                , test "そば2玉（Whole 2）: 900 + (100 + 100×4) = 1400円" <|
+                            |> Expect.equal 1350
+                , test "そば2玉（Whole 2）: 950 + (100 + 100×4) = 1450円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 2), toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1400
+                            |> Expect.equal 1450
                 ]
-            , describe "ちゃんぽん: 900 + 入場料(100) + 半玉単価(100)×(2n)"
-                [ test "ちゃんぽん1玉: 900 + (100 + 100×2) = 1200円" <|
+            , describe "ちゃんぽん: 950 + 入場料(100) + 半玉単価(100)×(2n)"
+                [ test "ちゃんぽん1玉: 950 + (100 + 100×2) = 1250円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithChampon 1, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1200
-                , test "ちゃんぽん2玉: 900 + (100 + 100×4) = 1400円" <|
+                            |> Expect.equal 1250
+                , test "ちゃんぽん2玉: 950 + (100 + 100×4) = 1450円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithChampon 2, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1400
-                , test "ちゃんぽん3玉: 900 + (100 + 100×6) = 1600円" <|
+                            |> Expect.equal 1450
+                , test "ちゃんぽん3玉: 950 + (100 + 100×6) = 1650円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithChampon 3, toppings = [], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1600
+                            |> Expect.equal 1650
                 ]
             , describe "トッピングあり"
-                [ test "イカ天×1: 900 + 200 = 1100円" <|
+                [ test "イカ天×1: 950 + 200 = 1150円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithoutNoodle, toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 } ], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1100
-                , test "イカ天×1 + ねぎかけ×2: 900 + 200 + (250×2) = 1600円" <|
+                            |> Expect.equal 1150
+                , test "イカ天×1 + ねぎかけ×2: 950 + 200 + (250×2) = 1650円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithoutNoodle, toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 }, { topping = Okonomiyaki.toppingNegi, quantity = 2 } ], selectedBase = Okonomiyaki.YasaiIri }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1600
+                            |> Expect.equal 1650
                 ]
             , describe "麺 + トッピングの組み合わせ"
-                [ test "そば0.5玉 + イカ天 + ねぎかけ: 900 + (100+100) + 200 + 250 = 1550円" <|
+                [ test "そば0.5玉 + イカ天 + ねぎかけ: 950 + (100+100) + 200 + 250 = 1600円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithSoba Okonomiyaki.HalfBall
                         , toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 1 }, { topping = Okonomiyaki.toppingNegi, quantity = 1 } ]
                         , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1550
-                , test "そば0.5玉 + イカ天×2: 900 + (100+100) + 200×2 = 1500円" <|
+                            |> Expect.equal 1600
+                , test "そば0.5玉 + イカ天×2: 950 + (100+100) + 200×2 = 1550円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithSoba Okonomiyaki.HalfBall
                         , toppings = [ { topping = Okonomiyaki.toppingIkaten, quantity = 2 } ]
                         , selectedBase = Okonomiyaki.YasaiIri
                         }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1500
+                            |> Expect.equal 1550
                 ]
             , describe "全部入り（ZenbuIri）の価格計算"
-                [ test "イカ + エビ（麺なし）= 1400円" <|
+                [ test "イカ + エビ（麺なし）= 1450円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithoutNoodle
                         , toppings =
@@ -312,8 +312,8 @@ suite =
                         , selectedBase = Okonomiyaki.ZenbuIri
                         }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1400
-                , test "そば1玉 + イカ + エビ = 1700円" <|
+                            |> Expect.equal 1450
+                , test "そば1玉 + イカ + エビ = 1750円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings =
@@ -323,8 +323,8 @@ suite =
                         , selectedBase = Okonomiyaki.ZenbuIri
                         }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1700
-                , test "うどん1玉 + イカ + エビ = 1700円" <|
+                            |> Expect.equal 1750
+                , test "うどん1玉 + イカ + エビ = 1750円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithUdon (Okonomiyaki.Whole 1)
                         , toppings =
@@ -334,8 +334,8 @@ suite =
                         , selectedBase = Okonomiyaki.ZenbuIri
                         }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1700
-                , test "そば0.5玉 + イカ + エビ = 1600円" <|
+                            |> Expect.equal 1750
+                , test "そば0.5玉 + イカ + エビ = 1650円" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithSoba Okonomiyaki.HalfBall
                         , toppings =
@@ -345,8 +345,8 @@ suite =
                         , selectedBase = Okonomiyaki.ZenbuIri
                         }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 1600
-                , test "selectedBase が ZenbuIri でなければイカ+エビがあっても割引なし（そば1玉+イカ+エビ = 2000円）" <|
+                            |> Expect.equal 1650
+                , test "selectedBase が ZenbuIri でなければイカ+エビがあっても割引なし（そば1玉+イカ+エビ = 2150円）" <|
                     \_ ->
                         { noodleSelection = Okonomiyaki.WithSoba (Okonomiyaki.Whole 1)
                         , toppings =
@@ -356,7 +356,7 @@ suite =
                         , selectedBase = Okonomiyaki.SobaIri
                         }
                             |> Okonomiyaki.calculateTotal
-                            |> Expect.equal 2000
+                            |> Expect.equal 2150
                 ]
             ]
         , describe "SelectNoodleKind（数量維持）"

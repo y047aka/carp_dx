@@ -34,7 +34,7 @@ baseYasai : MenuItem
 baseYasai =
     { id = "base-yasai"
     , name = "野菜入り"
-    , price = 900
+    , price = 950
     , category = Base
     }
 
@@ -48,7 +48,7 @@ baseSoba : MenuItem
 baseSoba =
     { id = "base-soba"
     , name = "そば入り"
-    , price = 1200
+    , price = 1250
     , category = Base
     }
 
@@ -62,7 +62,7 @@ baseUdon : MenuItem
 baseUdon =
     { id = "base-udon"
     , name = "うどん入り"
-    , price = 1200
+    , price = 1250
     , category = Base
     }
 
@@ -132,7 +132,7 @@ grilledIka : MenuItem
 grilledIka =
     { id = "grilled-ika"
     , name = "イカ焼き"
-    , price = 900
+    , price = 950
     , category = Grilled
     }
 
@@ -217,7 +217,7 @@ drinkSake : MenuItem
 drinkSake =
     { id = "drink-sake"
     , name = "日本酒"
-    , price = 600
+    , price = 650
     , category = Drink
     }
 
